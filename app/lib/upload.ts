@@ -88,11 +88,9 @@ export async function discardUpload(file: File): Promise<void> {
 
     try {
         await api.cancelUpload(remembered.token)
-    } catch {
-        // The storage may have dropped it already. Either way it is gone, which
-        // is what we wanted.
+    } catch (problem) {
+        if (!(problem instanceof api.ApiError) || problem.status !== 400) throw problem
     }
-
     await forget(id)
 }
 
@@ -118,10 +116,8 @@ async function openUpload(file: File, id: string, options: UploadOptions): Promi
             const parts = await api.uploadedParts(remembered.token)
             options.onStatus(`Continuing an earlier upload, ${parts.length} of ${remembered.totalParts} parts already sent`)
             return { ...remembered, parts }
-        } catch {
-            // The storage no longer knows this upload. It was finished, thrown
-            // away, or cleaned up. There is nothing to continue, so we drop our
-            // note and begin again.
+        } catch (problem) {
+            if (!(problem instanceof api.ApiError) || (problem.status !== 400 && problem.status !== 410)) throw problem
             await forget(id)
         }
     }

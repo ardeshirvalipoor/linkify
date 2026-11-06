@@ -46,6 +46,8 @@ export interface StoredPart {
     size: number
 }
 
+export class MultipartUploadMissingError extends Error {}
+
 // Opens a multipart upload and returns the id that ties all its parts together.
 // Nothing is stored yet; this only reserves the name.
 export async function createMultipartUpload(key: string, fileName: string, contentType: string): Promise<string> {
@@ -79,19 +81,24 @@ export function presignPartUrl(key: string, uploadId: string, partNumber: number
 // makes resuming possible, and it is authoritative in a way the browser's own
 // notes never are.
 export async function listParts(key: string, uploadId: string): Promise<StoredPart[]> {
-    const listed = await client.send(new ListPartsCommand({
-        Bucket: config.r2.bucket,
-        Key: key,
-        UploadId: uploadId
-    }))
+    try {
+        const listed = await client.send(new ListPartsCommand({
+            Bucket: config.r2.bucket,
+            Key: key,
+            UploadId: uploadId
+        }))
 
-    // One response holds up to 1000 parts and our largest upload has 128, so
-    // there is never a second page to fetch.
-    return (listed.Parts ?? []).map(part => ({
-        partNumber: part.PartNumber ?? 0,
-        etag: part.ETag ?? '',
-        size: part.Size ?? 0
-    }))
+        // One response holds up to 1000 parts and our largest upload has 128, so
+        // there is never a second page to fetch.
+        return (listed.Parts ?? []).map(part => ({
+            partNumber: part.PartNumber ?? 0,
+            etag: part.ETag ?? '',
+            size: part.Size ?? 0
+        }))
+    } catch (error) {
+        if (isNoSuchUpload(error)) throw new MultipartUploadMissingError('This multipart upload is no longer available')
+        throw error
+    }
 }
 
 // Glues the parts together into one object. After this the file is real and the
@@ -113,11 +120,15 @@ export async function completeMultipartUpload(key: string, uploadId: string, par
 // Throws away an unfinished upload and the parts it collected. Without this the
 // parts sit in the bucket costing money forever.
 export async function abortMultipartUpload(key: string, uploadId: string): Promise<void> {
-    await client.send(new AbortMultipartUploadCommand({
-        Bucket: config.r2.bucket,
-        Key: key,
-        UploadId: uploadId
-    }))
+    try {
+        await client.send(new AbortMultipartUploadCommand({
+            Bucket: config.r2.bucket,
+            Key: key,
+            UploadId: uploadId
+        }))
+    } catch (error) {
+        if (!isNoSuchUpload(error)) throw error
+    }
 }
 
 // Removes a finished file for good. Deleting a file that is already gone is not
@@ -158,4 +169,8 @@ function contentDisposition(fileName: string, disposition: 'attachment' | 'inlin
     // would break out of the quotes, becomes an underscore.
     const ascii = fileName.replace(/[^\x20-\x7e]|["\\]/g, '_')
     return `${disposition}; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(fileName)}`
+}
+
+function isNoSuchUpload(error: unknown): boolean {
+    return typeof error === 'object' && error !== null && 'name' in error && error.name === 'NoSuchUpload'
 }

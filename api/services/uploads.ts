@@ -54,7 +54,7 @@ export async function start(file: NewUpload): Promise<StartedUpload> {
 // the answer to skip everything the storage already has.
 export async function uploadedParts(token: string): Promise<storage.StoredPart[]> {
     const upload = readUploadToken(token)
-    return storage.listParts(objectKey(upload.id), upload.uploadId)
+    return listPartsOrThrow(objectKey(upload.id), upload.uploadId)
 }
 
 // Step three, asked once per part. We only sign the URL; the bytes go straight
@@ -78,7 +78,7 @@ export async function finish(token: string, expiresIn: LinkExpiry, password?: st
     // We ask the bucket what it has rather than trusting a list sent by the
     // browser. The bucket is the only place that knows for certain, and its
     // answer already carries the ETags that the next call needs.
-    const parts = await storage.listParts(key, upload.uploadId)
+    const parts = await listPartsOrThrow(key, upload.uploadId)
     const missing = missingParts(parts, countParts(upload.size))
     if (missing.length > 0) {
         throw new HttpError(409, `${missing.length} part(s) never arrived, starting with part ${missing[0]}`)
@@ -124,4 +124,15 @@ function missingParts(parts: storage.StoredPart[], totalParts: number): number[]
     }
 
     return missing
+}
+
+async function listPartsOrThrow(key: string, uploadId: string): Promise<storage.StoredPart[]> {
+    try {
+        return await storage.listParts(key, uploadId)
+    } catch (error) {
+        if (error instanceof storage.MultipartUploadMissingError) {
+            throw new HttpError(410, error.message)
+        }
+        throw error
+    }
 }

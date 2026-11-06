@@ -54,6 +54,11 @@ export const Progress = () => {
             fill.style({ width: '0%' })
             done.text('0%')
             rate.text('')
+        },
+
+        prepareResume() {
+            startedBytes = null
+            startedAt = 0
         }
     })
 }
