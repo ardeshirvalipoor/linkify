@@ -13,6 +13,7 @@ import { fileSize } from '../../lib/format'
 import { discardUpload, resumableUpload, uploadFile } from '../../lib/upload'
 import { consumeUploaderPassword, storeUploaderPassword } from '../../lib/uploader-password'
 import { getRevocationToken, storeRevocationToken } from '../../lib/share-revocation'
+import { createSiteNavigation } from '../../lib/site-navigation'
 import { show } from '../../lib/show'
 import { createPreferencesBar, t, translateUploadStatus } from '../../lib/preferences'
 import styles from './index.module.css'
@@ -26,6 +27,7 @@ type Stage = 'idle' | 'chosen' | 'uploading' | 'done' | 'failed'
 export const UploadPage = () => {
     const page = Page()
     page.addClass('screen')
+    const siteNavigation = createSiteNavigation()
     const preferencesBar = createPreferencesBar()
 
     const card = Div()
@@ -52,15 +54,22 @@ export const UploadPage = () => {
         { emoji: '🛡️', title: t('safe'), text: t('safeDetail') },
         { emoji: '↩️', title: t('resumable'), text: t('resumableDetail') },
         { emoji: '✨', title: t('simple'), text: t('simpleDetail') },
-        { emoji: '✅', title: t('reliable'), text: t('reliableDetail') }
+        { emoji: '✅', title: t('reliable'), text: t('reliableDetail') },
+        { emoji: '📦', title: '1 GB', text: 'Share files up to 1 GB' },
+        { emoji: '⏱️', title: t('expiryLabel'), text: `${t('hour')} · ${t('day')} · ${t('week')}` },
+        { emoji: '🔑', title: t('protect'), text: 'Add an optional access password' }
     ]
     for (const item of benefitItems) {
         const block = Div()
         block.addClass('benefit')
+        const icon = Span(item.emoji)
+        icon.addClass('benefit-icon')
         const heading = Base('strong')
-        heading.text(`${item.emoji} ${item.title}`)
+        heading.addClass('benefit-title')
+        heading.text(item.title)
         const detail = Span(item.text)
-        block.append(heading, detail)
+        detail.addClass('benefit-detail')
+        block.append(icon, heading, detail)
         benefits.append(block)
     }
     benefitsWrap.append(benefitsTitle, benefits)
@@ -73,7 +82,20 @@ export const UploadPage = () => {
     aboutTitle.text(t('aboutTitle'))
     const aboutDescription = P(t('aboutDescription'))
     aboutDescription.addClass('about-description')
-    aboutWrap.append(aboutTitle, aboutDescription)
+    const aboutLinks = Div()
+    aboutLinks.addClass('about-links')
+    for (const item of [
+        { href: '/about.html', label: 'Meet Linkify' },
+        { href: '/how-it-works.html', label: 'See how it works' }
+    ]) {
+        const link = Base('a')
+        link.el.href = item.href
+        link.el.target = '_blank'
+        link.el.rel = 'noopener noreferrer'
+        link.el.textContent = item.label
+        aboutLinks.append(link)
+    }
+    aboutWrap.append(aboutTitle, aboutDescription, aboutLinks)
 
     // Offer only the three supported link lifetimes in a native accessible select.
     const expiryChoices: { value: api.LinkExpiry; label: string }[] = [
@@ -284,7 +306,7 @@ export const UploadPage = () => {
     endActions.append(retryButton, revokeButton, againButton)
 
     card.append(heading, intro, expiryRow, passwordRow, dropZone, previewWrap, fileRow, resumeNote, actions, termsRow, progress, status, shareRow, expirySummary, error, endActions)
-    page.append(preferencesBar, card, benefitsWrap, aboutWrap, qrModal, revokeConfirmModal)
+    page.append(siteNavigation, preferencesBar, card, benefitsWrap, aboutWrap, qrModal, revokeConfirmModal)
 
     // --- state ---------------------------------------------------------------
 
@@ -380,6 +402,7 @@ export const UploadPage = () => {
         show(error, stage === 'failed')
         show(endActions, stage === 'done' || stage === 'failed')
         show(retryButton, stage === 'failed')
+        retryButton.text(canResume ? t('resumeUpload') : t('tryAgain'))
         show(revokeButton, stage === 'done' && Boolean(currentRevocationToken) && !linkRevoked)
     }
 
@@ -470,10 +493,9 @@ export const UploadPage = () => {
             show(passwordError, true)
             return
         }
-        if (password !== undefined && password.length < 6) {
-            show(passwordError, false)
-            error.text(t('passwordTooShort'))
-            setStage('failed')
+        if (password !== undefined && (password.length < 6 || password.length > 128)) {
+            passwordError.text(t(password.length < 6 ? 'passwordTooShort' : 'passwordTooLong'))
+            show(passwordError, true)
             return
         }
         show(passwordError, false)
@@ -487,7 +509,8 @@ export const UploadPage = () => {
         expirySummary.text('')
         error.text('')
         show(error, false)
-        progress.reset()
+        if (canResume) progress.prepareResume()
+        else progress.reset()
         status.text(t('preparingUpload'))
         setStage('uploading')
 
@@ -508,10 +531,15 @@ export const UploadPage = () => {
             canResume = false
             setStage('done')
         } catch (problem) {
-            // Whatever went wrong, the parts that did arrive are still in the
-            // bucket, so "Try again" really does continue rather than restart.
-            canResume = true
-            error.text(problem instanceof Error ? problem.message : t('uploadFailed'))
+            const message = problem instanceof Error ? problem.message : t('uploadFailed')
+            error.text(message)
+            try {
+                canResume = Boolean(await resumableUpload(chosen))
+            } catch (resumeProblem) {
+                canResume = false
+                const detail = resumeProblem instanceof Error ? resumeProblem.message : t('uploadFailed')
+                error.text(`${message} (${detail})`)
+            }
             setStage('failed')
         }
     }
@@ -571,10 +599,15 @@ export const UploadPage = () => {
 
     discardButton.on('click', async () => {
         if (!chosen) return
-        await discardUpload(chosen)
+        // The note is gone either way, so the page starts fresh even after a failure.
+        const problem: unknown = await discardUpload(chosen).catch((reason: unknown) => reason)
         canResume = false
         uploadButton.text(t('upload'))
         setStage('chosen')
+        if (problem) {
+            error.text(problem instanceof Error ? problem.message : t('uploadFailed'))
+            show(error, true)
+        }
     })
 
     againButton.on('click', () => {
@@ -587,6 +620,7 @@ export const UploadPage = () => {
         expirySummary.text('')
         error.text('')
         show(error, false)
+        progress.reset()
         passwordToggle.el.checked = false
         passwordInput.setValue('')
         termsCheckbox.el.checked = false

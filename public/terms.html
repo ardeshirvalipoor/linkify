@@ -7,16 +7,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Linkify — Terms of Service</title>
     <meta name="description" content="Terms of service for Linkify private file sharing." />
+    <script src="/theme.js"></script>
     <style>
       :root {
         --bg: #f3f6f3;
-        --card: #ffffff;
         --line: #dfe9e1;
         --ink: #111827;
         --muted: #4b5563;
         --brand: #14532d;
         --brand-soft: #ecfdf5;
-        --shadow: rgba(17, 24, 39, 0.08);
       }
 
       * { box-sizing: border-box; }
@@ -27,30 +26,6 @@
         font-family: Arial, sans-serif;
         background: linear-gradient(180deg, #f6faf7 0%, #eef4ef 100%);
         color: var(--ink);
-      }
-
-      .shell {
-        max-width: 960px;
-        margin: 0 auto;
-        padding: 40px 24px 72px;
-      }
-
-      .brand {
-        display: inline-block;
-        margin-bottom: 6px;
-        font-size: 12px;
-        letter-spacing: 0.18em;
-        text-transform: uppercase;
-        color: var(--brand);
-        font-weight: 700;
-      }
-
-      .hero {
-        background: var(--card);
-        border: 1px solid var(--line);
-        border-radius: 18px;
-        box-shadow: 0 12px 30px var(--shadow);
-        padding: 32px 28px 24px;
       }
 
       h1 {
@@ -102,24 +77,35 @@
         font-weight: 600;
       }
     </style>
+    <link rel="stylesheet" href="/bundle.css" />
   </head>
   <body>
-    <div class="shell">
-      <div class="hero">
-        <span class="brand">Linkify</span>
+    <div class="info-shell">
+      <header class="site-header">
+        <a class="site-brand" href="/" aria-label="Linkify home">Linkify</a>
+        <nav class="site-nav" aria-label="Main navigation">
+          <a href="/how-it-works.html">How it works</a>
+          <a href="/about.html">About</a>
+          <a href="/terms.html" aria-current="page">Terms</a>
+          <a href="/privacy.html">Privacy</a>
+        </nav>
+      </header>
+      <main class="info-page">
+        <p class="info-eyebrow">Linkify / Terms</p>
         <h1>Terms of Service</h1>
 
-        <p>Linkify lets you upload files, generate private share links, and optionally protect those links with a password.</p>
+        <p class="info-lead">Linkify lets you upload files, generate private share links, and optionally protect those links with a password.</p>
         <p>You are responsible for the files you upload and for the people you share them with. Do not upload content that violates the law, infringes on other people's rights, or contains malware or abusive material.</p>
         <p>We provide the service as-is and may suspend or remove links that abuse the platform, contain harmful content, or interfere with normal operation.</p>
-        <p>Files are stored in private object storage and access is limited to short-lived signed URLs and optional password checks. Keep your share links and passwords private.</p>
+        <p>Files are stored in a private object-storage bucket. Password protection is an access check, not encryption: the service checks the password before issuing a direct storage URL that remains usable for up to five minutes. Keep share links and passwords private, and share passwords separately from their links.</p>
+        <p>The selected link lifetime begins when the upload completes. Link access is rejected at expiry, while removal of the stored object may happen later when the cleanup job runs.</p>
         <!-- This section lists the service records collected and their current retention behavior. -->
         <h2>Information we retain</h2>
-        <p>For each upload, we keep the file name, content type, size, file identifier, status, and upload/completion timestamps in our database. We also write a record containing the file name, content type, size, password-protection status, link expiration time, and record time to object storage. These metadata records are not currently deleted when a file expires, so they may remain after the file itself is removed.</p>
+        <p>For each upload, we keep the file name, content type, size, file identifier, status, upload/completion timestamps, link expiration time, and password hash when set in our database. File metadata may remain in the database after the stored file is removed.</p>
         <p>When someone downloads a file, we record the file identifier, download time, a keyed hash of the visitor's IP address, and their browser user-agent string. Download records and file metadata are retained in the database. Passwords themselves are not stored, but a hash is kept to verify protected links.</p>
         <p>By using Linkify, you agree to these terms and to any applicable local or regional laws governing file sharing and online services.</p>
         <a class="back" href="/">Back to the app</a>
-      </div>
+      </main>
     </div>
   </body>
 </html>

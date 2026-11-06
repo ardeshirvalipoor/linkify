@@ -8,11 +8,13 @@ import { Base, Button, Div, H1, Input, P, Page, IRouteEvent } from '@codesuma/ba
 import { fileInfo } from '../../lib/api'
 import { fileSize } from '../../lib/format'
 import { createPreferencesBar, languageLocale, t } from '../../lib/preferences'
+import { createSiteNavigation } from '../../lib/site-navigation'
 import { show } from '../../lib/show'
 
 export const DownloadPage = () => {
     const page = Page()
     page.addClass('screen')
+    const siteNavigation = createSiteNavigation()
     const preferencesBar = createPreferencesBar()
 
     const card = Div()
@@ -76,7 +78,7 @@ export const DownloadPage = () => {
     error.addClass('error')
 
     card.append(heading, meta, previewWrap, passwordWrap, actions, error)
-    page.append(preferencesBar, card)
+    page.append(siteNavigation, preferencesBar, card)
 
     let downloadPath = ''
     let currentId = ''

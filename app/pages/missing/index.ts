@@ -2,10 +2,12 @@
 
 import { Button, Div, H1, P, Page, router } from '@codesuma/baseline'
 import { createPreferencesBar, t } from '../../lib/preferences'
+import { createSiteNavigation } from '../../lib/site-navigation'
 
 export const MissingPage = () => {
     const page = Page()
     page.addClass('screen')
+    const siteNavigation = createSiteNavigation()
     const preferencesBar = createPreferencesBar()
 
     const card = Div()
@@ -26,7 +28,7 @@ export const MissingPage = () => {
     actions.append(home)
 
     card.append(heading, intro, actions)
-    page.append(preferencesBar, card)
+    page.append(siteNavigation, preferencesBar, card)
 
     return page
 }

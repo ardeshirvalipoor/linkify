@@ -1,7 +1,7 @@
 # File sharing
 
-Upload a file up to 1 GB, get a link, share it. An interrupted upload carries on
-from where it stopped, even after the browser is closed and reopened.
+Upload a file up to 1 GB, get a link, share it. Resume an interrupted upload for
+up to 7 days by reopening the same browser profile and choosing the same file.
 
 The service runs on Fly.io. The files live in Cloudflare R2. What the service
 knows about those files lives in a Supabase Postgres database. The file bytes
@@ -43,7 +43,9 @@ The thin line carries small messages. The thick line carries the file.
 
 The thick line goes past our machine, not through it. The browser sends each
 8 MiB part straight to Cloudflare. A 1 GB upload therefore costs our machine no
-bandwidth and no memory, which is why it can be the smallest machine Fly sells.
+file bandwidth and uses only three 8 MiB upload parts at once in the browser,
+which is why the smallest Fly machine can serve it. R2 storage and requests can
+still incur charges.
 
 The Fly machine itself still stores nothing. It keeps nothing on disk and nothing
 in memory between requests, so Fly can replace it at any moment and lose nothing.
@@ -198,6 +200,20 @@ You do not need to expose the ETag header, which most guides tell you to do. Our
 server asks R2 for the part list when it finishes an upload, so the browser never
 has to read that header.
 
+### Keep incomplete uploads from accumulating
+
+Configure an R2 lifecycle rule for this bucket to **abort incomplete multipart
+uploads after 7 days**. This is the upper limit for resuming an interrupted
+upload; after that, choosing the same file starts a new upload. The rule is
+important for cost control because unfinished parts occupy storage until the
+multipart upload is aborted. Do not rely on a bucket's default rules: verify
+that this rule is enabled on the bucket used by Linkify.
+
+Uploads are capped at 1 GB and sent in 8 MiB parts, with at most three parts
+being uploaded at once. The bytes travel from the browser directly to R2, not
+through Fly, so large files do not consume Fly bandwidth or file-sized server
+memory. These limits do not eliminate R2 storage or request charges.
+
 ## Set up the database
 
 Create a project in Supabase. Then click **Connect** in the dashboard. You will
@@ -307,14 +323,21 @@ user interface.
 ## Limits and what is missing
 
 - One file per upload, up to 1 GB.
-- A signed share link expires after the selected hour, day, or week. The
-  `files.expires_at` column is not used; a separate R2 cleanup marker removes
-  the stored object after its link expires.
+- A signed share link expires one hour, one day, or one week after upload
+  completion. Link access stops at that deadline; storage deletion is performed
+  by the cleanup job, which runs while the Fly machine is awake. If Fly has
+  stopped the machine, deletion waits until it starts again. A previously issued
+  direct storage URL may remain usable for up to five minutes.
 - Anyone holding an active link can download the file. There are no accounts;
   optional passwords and link revocation are supported.
 - Every download is recorded, and `files.download_count` is kept up to date.
   Nothing shows either of them to anybody yet.
-- An interrupted upload can be resumed for 7 days. New R2 buckets come with a
-  rule named "Default Multipart Abort Rule" that throws away the parts of an
-  unfinished upload after a week. After that, the next attempt starts from zero.
-  The app notices and handles it quietly, so nobody sees an error.
+- An interrupted upload can be resumed for 7 days in the same browser profile,
+  provided its IndexedDB site data is retained and the same file is selected.
+  Configure and verify the R2 incomplete-multipart lifecycle rule above; when
+  R2 removes an expired upload, Linkify starts a fresh upload instead of
+  mistakenly treating a temporary network error as expired data.
+- Password protection is an access check, not file encryption. The server
+  verifies the password before issuing a direct storage URL; anyone with that
+  URL can use it for up to five minutes. Passwords are not included in the
+  share link and are stored as a keyed hash, never as plain text.

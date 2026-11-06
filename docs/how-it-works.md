@@ -109,6 +109,13 @@ truth, and its answer cannot go stale or get out of step with reality.
 
 The whole loop is `uploadFile` in `app/lib/upload.ts`.
 
+The browser must retain the small IndexedDB note and the person must choose the
+same file again. R2 keeps incomplete multipart data only until its configured
+7-day abort lifecycle rule removes it. A temporary failure while checking the
+saved upload is shown as an error and does not discard the note or silently
+start a duplicate upload. Once R2 explicitly reports that the multipart upload
+is gone, the app can start over.
+
 ## Idea five: finish from the server
 
 When every part has landed, the browser asks the server to finish the upload.
@@ -219,6 +226,31 @@ and size. The download button goes to `GET /api/files/:id/download`. That one
 writes a row in `downloads`, then answers with a redirect to a presigned URL
 that lasts five minutes.
 
+## What protection and expiration mean
+
+The R2 bucket is private. Share links are signed and expire one hour, one day,
+or one week after the upload successfully completes. At the deadline the
+application rejects the share link even if physical deletion has not happened
+yet. The cleanup job deletes expired file objects while the Fly machine is
+awake; Fly may stop an idle machine, so deletion can wait until it wakes again.
+An already-issued direct storage URL works for up to five minutes, and a copy
+someone already downloaded cannot be revoked.
+
+Password protection is not encryption. The password is checked by Linkify
+before the service issues a short-lived URL for the private object. The
+password itself is not part of the share link; the database stores a keyed
+password hash rather than plain text. Anyone who has both the share link and
+the password can access the file while the link is valid. The object is not
+end-to-end encrypted, and a person who obtains an already-issued storage URL
+can use it until that URL expires.
+
+For cost control, uploads are capped at 1 GB and use three concurrent 8 MiB
+parts; file bytes go directly from the browser to R2, not through Fly. This
+avoids file-sized server bandwidth and memory use, but R2 storage and requests
+may still incur charges. The bucket must have a verified lifecycle rule that
+aborts incomplete multipart uploads after 7 days so abandoned parts do not
+remain stored indefinitely.
+
 ## Reading the code
 
 Start here, in this order.
@@ -242,21 +274,14 @@ The server has four layers, and each one has a single job.
 If you find upload logic in a handler, or an Express type in a service, something
 has drifted into the wrong layer.
 
-## Things to try next
+## Possible next steps
 
 Each of these is a small, self-contained change.
 
 - **Show the download count.** Every download is already recorded, and
   `files.download_count` is already kept up to date. Nothing displays it. One
   more field in the API response, and one more line on the download page.
-- **Expiring links.** The `files` table already has an `expires_at` column and
-  nothing writes to it. Take a date when the upload starts, put it there, refuse
-  the download once that date has passed, and add a lifecycle rule on the bucket
-  so the bytes go too.
-- **A password.** Take one when the upload starts, hash it, keep the hash in a
-  new column on `files`, and ask for it before signing the download URL. That one
-  needs a migration.
 - **Many files at once.** The upload engine already handles one file. Making the
   page hold a list of them changes only the page.
-- **Pause and resume.** Keep the `XMLHttpRequest` objects in a list and call
-  `abort()` on them. Resuming already works, so the resume half is free.
+- **Pause and resume controls.** Keep the `XMLHttpRequest` objects in a list and
+  call `abort()` on them to offer an explicit pause button.

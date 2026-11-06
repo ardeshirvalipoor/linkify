@@ -71,7 +71,11 @@ export async function uploadFile(file: File, options: UploadOptions, expiresIn: 
     })
 
     options.onStatus('Putting the parts together')
-    const finished = await api.finishUpload(upload.token, expiresIn, password)
+    const finished = await api.finishUpload(upload.token, expiresIn, password).catch(async (problem: unknown) => {
+        // The storage no longer has this upload, so the note can never be resumed.
+        if (problem instanceof api.ApiError && problem.status === 410) await forget(id)
+        throw problem
+    })
 
     // The upload is done, so the note about it is no longer worth keeping.
     await forget(id)
@@ -80,7 +84,9 @@ export async function uploadFile(file: File, options: UploadOptions, expiresIn: 
 }
 
 // Throws away an unfinished upload: tells the storage to drop the parts it
-// collected, then forgets our note about it.
+// collected, then forgets our note about it. The note goes even if the storage
+// call fails, because the person asked to start over, and a server fault must
+// not trap them. The bucket's lifecycle rule still removes the parts.
 export async function discardUpload(file: File): Promise<void> {
     const id = fingerprint(file)
     const remembered = await recall(id)
@@ -88,12 +94,11 @@ export async function discardUpload(file: File): Promise<void> {
 
     try {
         await api.cancelUpload(remembered.token)
-    } catch {
-        // The storage may have dropped it already. Either way it is gone, which
-        // is what we wanted.
+    } catch (problem) {
+        if (!(problem instanceof api.ApiError) || problem.status !== 400) throw problem
+    } finally {
+        await forget(id)
     }
-
-    await forget(id)
 }
 
 // Whether an earlier upload of this exact file is waiting to be continued.
@@ -118,10 +123,8 @@ async function openUpload(file: File, id: string, options: UploadOptions): Promi
             const parts = await api.uploadedParts(remembered.token)
             options.onStatus(`Continuing an earlier upload, ${parts.length} of ${remembered.totalParts} parts already sent`)
             return { ...remembered, parts }
-        } catch {
-            // The storage no longer knows this upload. It was finished, thrown
-            // away, or cleaned up. There is nothing to continue, so we drop our
-            // note and begin again.
+        } catch (problem) {
+            if (!(problem instanceof api.ApiError) || (problem.status !== 400 && problem.status !== 410)) throw problem
             await forget(id)
         }
     }
@@ -204,7 +207,13 @@ async function inParallel<T>(items: T[], limit: number, work: (item: T) => Promi
 
     const workers = Array.from({ length: Math.min(limit, queue.length) }, async () => {
         for (let item = queue.shift(); item !== undefined; item = queue.shift()) {
-            await work(item)
+            try {
+                await work(item)
+            } catch (problem) {
+                // The run has failed, so the other workers must not start new items.
+                queue.length = 0
+                throw problem
+            }
         }
     })
 

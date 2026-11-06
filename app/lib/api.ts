@@ -21,6 +21,13 @@ export interface UploadedPart {
     size: number
 }
 
+export class ApiError extends Error {
+    constructor(public readonly status: number, message: string) {
+        super(message)
+        this.name = 'ApiError'
+    }
+}
+
 // The browser API reports whether a file is protected and accepts a password
 // when completing an upload.
 export interface FileInfo {
@@ -73,5 +80,5 @@ export async function fileInfo(id: string, password?: string, shareUrl?: URL): P
 
 function unwrap<T>(response: { status: number; data: any }): T {
     if (response.status >= 200 && response.status < 300) return response.data as T
-    throw new Error(response.data?.error || `The server answered ${response.status}`)
+    throw new ApiError(response.status, response.data?.error || `The server answered ${response.status}`)
 }

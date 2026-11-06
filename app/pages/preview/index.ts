@@ -5,12 +5,14 @@ import { Base, Button, Div, H1, Input, P, Page, IRouteEvent } from '@codesuma/ba
 import { fileInfo } from '../../lib/api'
 import { fileSize } from '../../lib/format'
 import { createPreferencesBar, languageLocale, t } from '../../lib/preferences'
+import { createSiteNavigation } from '../../lib/site-navigation'
 import { show } from '../../lib/show'
 import { storeUploaderPassword } from '../../lib/uploader-password'
 
 export const PreviewPage = () => {
     const page = Page()
     page.addClass('screen')
+    const siteNavigation = createSiteNavigation()
     const preferencesBar = createPreferencesBar()
 
     const card = Div()
@@ -54,7 +56,7 @@ export const PreviewPage = () => {
     const error = P('')
     error.addClass('error')
     card.append(heading, meta, mediaWrap, passwordWrap, actions, error)
-    page.append(preferencesBar, card)
+    page.append(siteNavigation, preferencesBar, card)
 
     let currentId = ''
     let shareUrl = ''

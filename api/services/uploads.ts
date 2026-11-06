@@ -84,6 +84,14 @@ export async function finish(token: string, expiresIn: LinkExpiry, password?: st
         throw new HttpError(409, `${missing.length} part(s) never arrived, starting with part ${missing[0]}`)
     }
 
+    // A presigned URL does not limit how many bytes a part holds, so the size
+    // limit is really enforced here. We refuse without aborting: the upload never
+    // becomes a file, and the bucket's lifecycle rule removes its parts.
+    const storedBytes = parts.reduce((total, part) => total + part.size, 0)
+    if (storedBytes !== upload.size) {
+        throw new HttpError(400, 'The uploaded parts do not match the size of this file')
+    }
+
     await storage.completeMultipartUpload(key, upload.uploadId, parts)
 
     // R2 first, then the row. If this second call fails the bytes are safe and
