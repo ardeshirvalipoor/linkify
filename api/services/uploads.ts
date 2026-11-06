@@ -104,10 +104,12 @@ export async function finish(token: string, expiresIn: LinkExpiry, password?: st
 }
 
 // Give up on an upload and let the storage throw away the parts it collected.
+// R2 also answers yes when the upload had already finished, and the file stays
+// in the bucket, so this call cannot tell us which case we are in. The row can.
 export async function cancel(token: string): Promise<void> {
     const upload = readUploadToken(token)
     await storage.abortMultipartUpload(objectKey(upload.id), upload.uploadId)
-    await db.markFileDeleted(upload.id)
+    await db.markUploadCancelled(upload.id)
 }
 
 // Every part is PART_SIZE except the last, which holds the remainder.

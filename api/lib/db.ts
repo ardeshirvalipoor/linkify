@@ -55,14 +55,24 @@ export async function markFileReady(id: string, passwordHash: string | null, exp
     `
 }
 
-// The person gave up on the upload, or its link ran out and the bytes were
-// deleted. We keep the row rather than removing it, so a link that once worked
-// can later be told apart from one that never did.
+// The link ran out and the bytes were deleted. We keep the row rather than
+// removing it, so a link that once worked can later be told apart from one that
+// never did.
 export async function markFileDeleted(id: string): Promise<void> {
     await sql`
         update files
         set deleted_at = now()
         where id = ${id}
+    `
+}
+
+// The person gave up before the upload finished. A finished file is left alone,
+// because the expiry cleanup skips deleted rows and would never remove its bytes.
+export async function markUploadCancelled(id: string): Promise<void> {
+    await sql`
+        update files
+        set deleted_at = now()
+        where id = ${id} and status = 'uploading'
     `
 }
 
