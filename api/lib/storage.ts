@@ -21,6 +21,7 @@ import {
 } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { DOWNLOAD_URL_TTL, UPLOAD_URL_TTL, config } from '../config'
+import { HttpError } from './http-error'
 
 const client = new S3Client({
     // R2 has no regions, but the S3 protocol insists on the field.
@@ -45,8 +46,6 @@ export interface StoredPart {
     etag: string
     size: number
 }
-
-export class MultipartUploadMissingError extends Error {}
 
 // Opens a multipart upload and returns the id that ties all its parts together.
 // Nothing is stored yet; this only reserves the name.
@@ -96,25 +95,28 @@ export async function listParts(key: string, uploadId: string): Promise<StoredPa
             size: part.Size ?? 0
         }))
     } catch (error) {
-        if (isNoSuchUpload(error)) throw new MultipartUploadMissingError('This multipart upload is no longer available')
-        throw error
+        throw goneIfMissing(error)
     }
 }
 
 // Glues the parts together into one object. After this the file is real and the
 // share link works.
 export async function completeMultipartUpload(key: string, uploadId: string, parts: StoredPart[]): Promise<void> {
-    await client.send(new CompleteMultipartUploadCommand({
-        Bucket: config.r2.bucket,
-        Key: key,
-        UploadId: uploadId,
-        MultipartUpload: {
-            // The storage insists on ascending part numbers.
-            Parts: [...parts]
-                .sort((a, b) => a.partNumber - b.partNumber)
-                .map(part => ({ PartNumber: part.partNumber, ETag: part.etag }))
-        }
-    }))
+    try {
+        await client.send(new CompleteMultipartUploadCommand({
+            Bucket: config.r2.bucket,
+            Key: key,
+            UploadId: uploadId,
+            MultipartUpload: {
+                // The storage insists on ascending part numbers.
+                Parts: [...parts]
+                    .sort((a, b) => a.partNumber - b.partNumber)
+                    .map(part => ({ PartNumber: part.partNumber, ETag: part.etag }))
+            }
+        }))
+    } catch (error) {
+        throw goneIfMissing(error)
+    }
 }
 
 // Throws away an unfinished upload and the parts it collected. Without this the
@@ -173,4 +175,10 @@ function contentDisposition(fileName: string, disposition: 'attachment' | 'inlin
 
 function isNoSuchUpload(error: unknown): boolean {
     return typeof error === 'object' && error !== null && 'name' in error && error.name === 'NoSuchUpload'
+}
+
+// The storage forgets an upload once it is finished, thrown away or cleaned up.
+// The browser reads 410 as "this upload cannot be continued".
+function goneIfMissing(error: unknown): unknown {
+    return isNoSuchUpload(error) ? new HttpError(410, 'This upload is no longer available') : error
 }

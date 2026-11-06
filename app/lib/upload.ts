@@ -71,7 +71,11 @@ export async function uploadFile(file: File, options: UploadOptions, expiresIn: 
     })
 
     options.onStatus('Putting the parts together')
-    const finished = await api.finishUpload(upload.token, expiresIn, password)
+    const finished = await api.finishUpload(upload.token, expiresIn, password).catch(async (problem: unknown) => {
+        // The storage no longer has this upload, so the note can never be resumed.
+        if (problem instanceof api.ApiError && problem.status === 410) await forget(id)
+        throw problem
+    })
 
     // The upload is done, so the note about it is no longer worth keeping.
     await forget(id)
@@ -80,7 +84,9 @@ export async function uploadFile(file: File, options: UploadOptions, expiresIn: 
 }
 
 // Throws away an unfinished upload: tells the storage to drop the parts it
-// collected, then forgets our note about it.
+// collected, then forgets our note about it. The note goes even if the storage
+// call fails, because the person asked to start over, and a server fault must
+// not trap them. The bucket's lifecycle rule still removes the parts.
 export async function discardUpload(file: File): Promise<void> {
     const id = fingerprint(file)
     const remembered = await recall(id)
@@ -90,8 +96,9 @@ export async function discardUpload(file: File): Promise<void> {
         await api.cancelUpload(remembered.token)
     } catch (problem) {
         if (!(problem instanceof api.ApiError) || problem.status !== 400) throw problem
+    } finally {
+        await forget(id)
     }
-    await forget(id)
 }
 
 // Whether an earlier upload of this exact file is waiting to be continued.
@@ -200,7 +207,13 @@ async function inParallel<T>(items: T[], limit: number, work: (item: T) => Promi
 
     const workers = Array.from({ length: Math.min(limit, queue.length) }, async () => {
         for (let item = queue.shift(); item !== undefined; item = queue.shift()) {
-            await work(item)
+            try {
+                await work(item)
+            } catch (problem) {
+                // The run has failed, so the other workers must not start new items.
+                queue.length = 0
+                throw problem
+            }
         }
     })
 
