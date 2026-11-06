@@ -90,6 +90,8 @@ export const UploadPage = () => {
     ]) {
         const link = Base('a')
         link.el.href = item.href
+        link.el.target = '_blank'
+        link.el.rel = 'noopener noreferrer'
         link.el.textContent = item.label
         aboutLinks.append(link)
     }
@@ -313,7 +315,6 @@ export const UploadPage = () => {
 
     let chosen: File | null = null
     let canResume = false
-    let hasFailedUpload = false
     let previewUrl: string | null = null
     let currentShareUrl = ''
     let currentRevocationToken = ''
@@ -404,7 +405,7 @@ export const UploadPage = () => {
         show(error, stage === 'failed')
         show(endActions, stage === 'done' || stage === 'failed')
         show(retryButton, stage === 'failed')
-        show(resumeButton, stage === 'failed' && hasFailedUpload)
+        show(resumeButton, stage === 'failed' && canResume)
         show(revokeButton, stage === 'done' && Boolean(currentRevocationToken) && !linkRevoked)
     }
 
@@ -504,7 +505,6 @@ export const UploadPage = () => {
         show(passwordError, false)
 
         const expiresIn = (expirySelect.el as HTMLSelectElement).value as api.LinkExpiry
-        hasFailedUpload = false
         // Clear any earlier result before this upload starts so actions cannot reuse a stale link.
         currentShareUrl = ''
         currentRevocationToken = ''
@@ -535,8 +535,8 @@ export const UploadPage = () => {
             canResume = false
             setStage('done')
         } catch (problem) {
-            hasFailedUpload = true
             const message = problem instanceof Error ? problem.message : t('uploadFailed')
+            error.text(message)
             try {
                 canResume = Boolean(await resumableUpload(chosen))
             } catch (resumeProblem) {
@@ -544,7 +544,6 @@ export const UploadPage = () => {
                 const detail = resumeProblem instanceof Error ? resumeProblem.message : t('uploadFailed')
                 error.text(`${message} (${detail})`)
             }
-            if (canResume) error.text(message)
             setStage('failed')
         }
     }

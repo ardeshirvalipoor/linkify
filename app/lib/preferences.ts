@@ -209,7 +209,7 @@ const translations: Partial<Record<Language, Dictionary>> = {
         upload: 'अपलोड करें', continueUpload: 'अपलोड जारी रखें', discard: 'फिर से शुरू करें', preparingUpload: 'अपलोड तैयार हो रहा है',
         assemblingParts: 'फ़ाइल के हिस्से जोड़े जा रहे हैं', sendingParts: '{total} में से {missing} हिस्से भेजे जा रहे हैं',
         continuingUpload: 'पिछला अपलोड जारी है, {total} में से {sent} हिस्से भेजे जा चुके हैं',
-        expirySummary: 'यह लिंक {duration} में समाप्त होगा।', linkExpiresAt: 'लिंक की समय सीमा {date} है', copy: 'कॉपी करें', copied: 'कॉपी हो गया', openLink: 'खोलें', qrCode: 'QR', qrCodeTitle: 'इस QR कोड को स्कैन करें', close: 'बंद करें', tryAgain: 'फिर कोशिश करें', resumeUpload: 'फिर से शुरू करें', sendAnother: 'दूसरी फ़ाइल भेजें',
+        expirySummary: 'यह लिंक {duration} में समाप्त होगा।', linkExpiresAt: 'लिंक की समय सीमा {date} है', copy: 'कॉपी करें', copied: 'कॉपी हो गया', openLink: 'खोलें', qrCode: 'QR', qrCodeTitle: 'इस QR कोड को स्कैन करें', close: 'बंद करें', tryAgain: 'फिर कोशिश करें', resumeUpload: 'अपलोड जारी रखें', sendAnother: 'दूसरी फ़ाइल भेजें',
         confirmRevoke: 'यह लिंक रद्द करें?',
         revokeWarning: 'इस लिंक के पास वाला कोई भी व्यक्ति इसे तुरंत उपयोग नहीं कर पाएगा। केवल तभी रद्द करें जब आप निश्चित हों कि आप अब इस फ़ाइल को एक्सेस करने नहीं देना चाहते।',
         revokeLink: 'लिंक रद्द करें',
