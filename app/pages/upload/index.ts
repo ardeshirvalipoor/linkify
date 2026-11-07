@@ -109,6 +109,8 @@ export const UploadPage = () => {
     ]) {
         const link = Base('a')
         link.el.href = item.href
+        link.el.target = '_blank'
+        link.el.rel = 'noopener noreferrer'
         link.el.textContent = item.label
         aboutLinks.append(link)
     }
@@ -312,9 +314,6 @@ export const UploadPage = () => {
     const retryButton = Button(t('tryAgain'))
     retryButton.addClass('button', 'primary')
 
-    const resumeButton = Button(t('resumeUpload'))
-    resumeButton.addClass('button', 'secondary')
-
     const againButton = Button(t('sendAnother'))
     againButton.addClass('button', 'secondary')
 
@@ -323,7 +322,7 @@ export const UploadPage = () => {
 
     const endActions = Div()
     endActions.addClass('actions')
-    endActions.append(retryButton, resumeButton, revokeButton, againButton)
+    endActions.append(retryButton, revokeButton, againButton)
 
     card.append(heading, intro, expiryRow, passwordRow, dropZone, previewWrap, fileRow, resumeNote, actions, termsRow, progress, status, shareRow, expirySummary, error, endActions)
     page.append(siteNavigation, preferencesBar, card, benefitsWrap, aboutWrap, qrModal, revokeConfirmModal)
@@ -332,7 +331,6 @@ export const UploadPage = () => {
 
     let chosen: File | null = null
     let canResume = false
-    let hasFailedUpload = false
     let previewUrl: string | null = null
     let currentShareUrl = ''
     let currentRevocationToken = ''
@@ -423,7 +421,7 @@ export const UploadPage = () => {
         show(error, stage === 'failed')
         show(endActions, stage === 'done' || stage === 'failed')
         show(retryButton, stage === 'failed')
-        show(resumeButton, stage === 'failed' && hasFailedUpload)
+        retryButton.text(canResume ? t('resumeUpload') : t('tryAgain'))
         show(revokeButton, stage === 'done' && Boolean(currentRevocationToken) && !linkRevoked)
     }
 
@@ -514,16 +512,14 @@ export const UploadPage = () => {
             show(passwordError, true)
             return
         }
-        if (password !== undefined && password.length < 6) {
-            show(passwordError, false)
-            error.text(t('passwordTooShort'))
-            setStage('failed')
+        if (password !== undefined && (password.length < 6 || password.length > 128)) {
+            passwordError.text(t(password.length < 6 ? 'passwordTooShort' : 'passwordTooLong'))
+            show(passwordError, true)
             return
         }
         show(passwordError, false)
 
         const expiresIn = (expirySelect.el as HTMLSelectElement).value as api.LinkExpiry
-        hasFailedUpload = false
         // Clear any earlier result before this upload starts so actions cannot reuse a stale link.
         currentShareUrl = ''
         currentRevocationToken = ''
@@ -554,8 +550,8 @@ export const UploadPage = () => {
             canResume = false
             setStage('done')
         } catch (problem) {
-            hasFailedUpload = true
             const message = problem instanceof Error ? problem.message : t('uploadFailed')
+            error.text(message)
             try {
                 canResume = Boolean(await resumableUpload(chosen))
             } catch (resumeProblem) {
@@ -563,7 +559,6 @@ export const UploadPage = () => {
                 const detail = resumeProblem instanceof Error ? resumeProblem.message : t('uploadFailed')
                 error.text(`${message} (${detail})`)
             }
-            if (canResume) error.text(message)
             setStage('failed')
         }
     }
@@ -578,7 +573,6 @@ export const UploadPage = () => {
         void run()
     })
     retryButton.on('click', () => { void run() })
-    resumeButton.on('click', () => { void run() })
 
     // The modal opens before the HTTP revoke request so the user can decide to
     // abort the destructive action without accidentally disabling the link.
@@ -624,12 +618,12 @@ export const UploadPage = () => {
 
     discardButton.on('click', async () => {
         if (!chosen) return
-        try {
-            await discardUpload(chosen)
-            canResume = false
-            uploadButton.text(t('upload'))
-            setStage('chosen')
-        } catch (problem) {
+        // The note is gone either way, so the page starts fresh even after a failure.
+        const problem: unknown = await discardUpload(chosen).catch((reason: unknown) => reason)
+        canResume = false
+        uploadButton.text(t('upload'))
+        setStage('chosen')
+        if (problem) {
             error.text(problem instanceof Error ? problem.message : t('uploadFailed'))
             show(error, true)
         }
@@ -645,6 +639,7 @@ export const UploadPage = () => {
         expirySummary.text('')
         error.text('')
         show(error, false)
+        progress.reset()
         passwordToggle.el.checked = false
         passwordInput.setValue('')
         termsCheckbox.el.checked = false

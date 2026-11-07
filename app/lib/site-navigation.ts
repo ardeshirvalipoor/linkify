@@ -7,6 +7,8 @@ const links = [
     { href: '/privacy.html', label: 'Privacy' }
 ]
 
+// Every link opens a new tab, because this header stays on screen during an
+// upload. Leaving the page would stop the upload or lose the share link.
 export function createSiteNavigation() {
     const header = Base('header')
     header.addClass('site-header')
@@ -14,6 +16,8 @@ export function createSiteNavigation() {
     const brand = Base('a')
     brand.addClass('site-brand')
     brand.el.href = '/'
+    brand.el.target = '_blank'
+    brand.el.rel = 'noopener noreferrer'
     brand.el.textContent = 'Linkify'
     brand.el.setAttribute('aria-label', 'Linkify home')
 
@@ -24,6 +28,8 @@ export function createSiteNavigation() {
     for (const item of links) {
         const link = Base('a')
         link.el.href = item.href
+        link.el.target = '_blank'
+        link.el.rel = 'noopener noreferrer'
         link.el.textContent = item.label
         nav.append(link)
     }

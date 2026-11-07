@@ -58,7 +58,6 @@ export const Progress = () => {
 
         prepareResume() {
             startedBytes = null
-            startedAt = 0
         }
     })
 }
