@@ -34,25 +34,27 @@
 
 html[data-theme="dark"] {
     color-scheme: dark;
-    --bg: #111714;
-    --surface: #1b2520;
+    --bg: #0f1010;
+    --surface: #181a1b;
     --ink: #edf4ef;
-    --muted: #afbbb2;
-    --line: #3b4940;
-    --accent: #d8fa57;
-    --accent-soft: #2c371d;
+    --muted: #a7b0b3;
+    --line: #34393a;
+    --brand: #4ade63;
+    --accent: #4ade63;
+    --accent-soft: #203326;
+    --benefit-icon-color: #4ade63;
     --danger: #ff9a9a;
     --shadow: 0 24px 70px -36px rgba(0, 0, 0, .8);
-    --gridline: rgba(221, 237, 224, .04);
-    --field: #17211b;
-    --field-soft: #202b24;
-    --benefit-surface: #202b24;
-    --button-secondary-hover: #2a372f;
-    --button-primary: #d8fa57;
-    --button-primary-hover: #c9ec48;
-    --note-ink: #e3f5a0;
+    --gridline: rgba(221, 237, 224, .025);
+    --field: #101112;
+    --field-soft: #191b1c;
+    --benefit-surface: #1b1e1f;
+    --button-secondary-hover: #272b2c;
+    --button-primary: #4ade63;
+    --button-primary-hover: #39ce53;
+    --note-ink: #a5eeb0;
     --error-surface: #3c2222;
-    --card-outline: rgba(221, 237, 224, .13);
+    --card-outline: rgba(221, 237, 224, .12);
 }
 
 * {
@@ -99,6 +101,27 @@ body {
     width: 100%;
     max-width: 960px;
     margin-bottom: 24px;
+}
+
+.static-language-control {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.static-language-control label {
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.static-language-control select {
+    min-height: 42px;
+    padding: 0 10px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--surface);
+    color: var(--ink);
+    font: inherit;
 }
 
 .site-brand {
@@ -386,15 +409,20 @@ body {
 }
 
 .benefit-icon {
-    display: grid;
-    place-items: center;
-    width: 36px;
-    height: 36px;
-    flex: 0 0 36px;
-    border: 1px solid var(--line);
-    border-radius: 11px;
-    background: var(--accent-soft);
-    font-size: 17px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    flex: 0 0 40px;
+    border-radius: 10px;
+    background: rgba(125, 220, 74, .12);
+    color: var(--benefit-icon-color, #2e7d32);
+}
+
+.benefit-icon svg {
+    width: 22px;
+    height: 22px;
 }
 
 .benefit strong {
