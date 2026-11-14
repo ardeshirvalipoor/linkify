@@ -7,6 +7,19 @@ const revokeSchema = z.object({
     revocationToken: z.string().regex(/^[A-Za-z0-9_-]{43}$/)
 })
 
+const collectionSchema = z.object({
+    files: z.array(z.object({
+        id: z.string().regex(/^[A-Za-z0-9_-]{16}$/),
+        revocationToken: z.string().regex(/^[A-Za-z0-9_-]{43}$/)
+    })).min(2).max(1000)
+})
+
+export async function createCollection(req: Request, res: Response) {
+    const result = collectionSchema.safeParse(req.body)
+    if (!result.success) throw new HttpError(400, 'At least two completed files are required')
+    res.status(201).json(await services.files.createCollection(result.data.files))
+}
+
 // GET /api/files/:id
 export async function info(req: Request<{ id: string }>, res: Response) {
     const password = typeof req.query.password === 'string' ? req.query.password : undefined
@@ -39,4 +52,17 @@ export async function revoke(req: Request<{ id: string }>, res: Response) {
     }
     await services.files.revoke(req.params.id, result.data.revocationToken)
     res.status(204).end()
+}
+
+export async function downloadCollectionFile(req: Request<{ id: string; fileId: string }>, res: Response) {
+    const visitor = { address: req.ip ?? '', userAgent: req.get('user-agent') ?? null }
+    const password = typeof req.query.password === 'string' ? req.query.password : undefined
+    res.redirect(302, await services.files.collectionDownloadUrl(
+        req.params.id,
+        req.params.fileId,
+        req.query.expires,
+        req.query.signature,
+        visitor,
+        password
+    ))
 }

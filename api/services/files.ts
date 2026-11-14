@@ -4,11 +4,11 @@
 import { createHmac } from 'node:crypto'
 import { config } from '../config'
 import * as db from '../lib/db'
-import { isFileId, objectKey } from '../lib/file-id'
+import { isFileId, newFileId, objectKey } from '../lib/file-id'
 import * as storage from '../lib/storage'
 import { HttpError } from '../lib/http-error'
-import { verifyPassword, verifyShareLink } from '../lib/share-link'
-import { hashRevocationToken } from '../lib/share-revocation'
+import { createShareLink, verifyPassword, verifyShareLink } from '../lib/share-link'
+import { createRevocationToken, hashRevocationToken } from '../lib/share-revocation'
 
 export interface FileInfo {
     id: string
@@ -18,6 +18,19 @@ export interface FileInfo {
     protected: boolean
 }
 
+export interface ShareCollectionInfo {
+    id: string
+    files: FileInfo[]
+    protected: boolean
+}
+
+export interface ShareCollectionCredential {
+    id: string
+    revocationToken: string
+}
+
+export type ShareInfo = FileInfo | ShareCollectionInfo
+
 // Who is asking. The handler digs these out of the request, because nothing in
 // this file knows what an Express request is.
 export interface Visitor {
@@ -26,8 +39,27 @@ export interface Visitor {
 }
 
 // What the download page shows before anyone commits to a one gigabyte download.
-export async function info(id: string, expiry: unknown, signature: unknown, password?: string): Promise<FileInfo> {
+export async function info(id: string, expiry: unknown, signature: unknown, password?: string): Promise<ShareInfo> {
     verifyShareLink(id, expiry, signature)
+
+    const collection = await db.findShareCollection(id)
+    if (collection) {
+        if (collection.revokedAt) throw new HttpError(410, 'This share link has been revoked')
+        if (collection.expiresAt.getTime() <= Date.now()) throw new HttpError(410, 'This share link has expired')
+        requirePassword({ protected: Boolean(collection.passwordHash), passwordHash: collection.passwordHash }, password)
+        const files = await db.shareCollectionFiles(id)
+        return {
+            id,
+            protected: Boolean(collection.passwordHash),
+            files: files.map(file => ({
+                id: file.id,
+                fileName: file.fileName,
+                contentType: previewContentType(file.contentType, file.fileName),
+                size: file.size,
+                protected: Boolean(collection.passwordHash)
+            }))
+        }
+    }
 
     const file = await readFileInfo(id)
     requirePassword(file, password)
@@ -39,6 +71,23 @@ export async function info(id: string, expiry: unknown, signature: unknown, pass
         size: file.size,
         protected: file.protected
     }
+}
+
+export async function createCollection(files: ShareCollectionCredential[]): Promise<{ id: string; url: string; revocationToken: string }> {
+    if (files.length < 2 || files.some(file => !isFileId(file.id)) || new Set(files.map(file => file.id)).size !== files.length) {
+        throw new HttpError(400, 'A collection needs at least two different completed files')
+    }
+
+    const id = newFileId()
+    const revocationToken = createRevocationToken()
+    const collection = await db.createShareCollection(id, files.map(file => ({
+        id: file.id,
+        revocationTokenHash: hashRevocationToken(file.revocationToken)
+    })), hashRevocationToken(revocationToken))
+    if (!collection) throw new HttpError(400, 'The files could not be added to a share link')
+
+    const expiresAt = Math.floor(collection.expiresAt.getTime() / 1000)
+    return { id, url: createShareLink(id, '1h', expiresAt), revocationToken }
 }
 
 // A short-lived URL straight to the bucket. The same checks as info() come first,
@@ -58,6 +107,31 @@ export async function downloadUrl(id: string, expiry: unknown, signature: unknow
         console.error('Could not record the download', error)
     }
     return storage.presignDownloadUrl(objectKey(id), file.fileName)
+}
+
+export async function collectionDownloadUrl(
+    collectionId: string,
+    fileId: string,
+    expiry: unknown,
+    signature: unknown,
+    visitor: Visitor,
+    password?: string
+): Promise<string> {
+    verifyShareLink(collectionId, expiry, signature)
+    const collection = await db.findShareCollection(collectionId)
+    if (!collection) throw new HttpError(404, 'This share link does not contain a file collection')
+    if (collection.revokedAt) throw new HttpError(410, 'This share link has been revoked')
+    if (collection.expiresAt.getTime() <= Date.now()) throw new HttpError(410, 'This share link has expired')
+    requirePassword({ protected: Boolean(collection.passwordHash), passwordHash: collection.passwordHash }, password)
+    if (!await db.isShareCollectionMember(collectionId, fileId)) throw new HttpError(404, 'This file is not in this share link')
+
+    const file = await readFileInfo(fileId)
+    try {
+        await db.recordDownload(fileId, hashAddress(visitor.address), visitor.userAgent)
+    } catch (error) {
+        console.error('Could not record the download', error)
+    }
+    return storage.presignDownloadUrl(objectKey(fileId), file.fileName)
 }
 
 // Types a browser can only show as a picture, a video or a PDF. Anything else,
@@ -97,6 +171,8 @@ export async function revoke(id: string, revocationToken: string): Promise<void>
     if (!isFileId(id)) {
         throw new HttpError(404, 'This revocation token is not valid for this file')
     }
+
+    if (await db.revokeShareCollection(id, hashRevocationToken(revocationToken))) return
 
     const before = await db.revocationState(id)
     if (before && (before.deletedAt || before.revokedAt)) {
@@ -155,7 +231,7 @@ function previewContentType(contentType: string, fileName: string): string {
     return extension ? knownTypes[extension] ?? contentType : contentType
 }
 
-function requirePassword(file: FileInfo & { passwordHash: string | null }, password?: string): void {
+function requirePassword(file: { protected: boolean; passwordHash: string | null }, password?: string): void {
     if (!file.protected) return
     if (typeof password !== 'string' || password.length === 0) {
         throw new HttpError(401, 'This file is password protected')

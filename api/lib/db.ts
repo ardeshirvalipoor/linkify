@@ -95,6 +95,139 @@ export interface FileRow {
     revokedAt: Date | null
 }
 
+export interface ShareCollectionRow {
+    id: string
+    expiresAt: Date
+    passwordHash: string | null
+    revokedAt: Date | null
+}
+
+export interface ShareCollectionFileRow {
+    id: string
+    fileName: string
+    contentType: string
+    size: number
+}
+
+export interface ShareCollectionCredential {
+    id: string
+    revocationTokenHash: string
+}
+
+export async function createShareCollection(
+    id: string,
+    files: ShareCollectionCredential[],
+    revocationTokenHash: string
+): Promise<{ expiresAt: Date; passwordHash: string | null } | null> {
+    return sql.begin(async transaction => {
+        const [fileIdCollision] = await transaction`select id from files where id = ${id}`
+        const [collectionIdCollision] = await transaction`select id from share_collections where id = ${id}`
+        if (fileIdCollision || collectionIdCollision) return null
+
+        const members: { id: string; expiresAt: Date; passwordHash: string | null }[] = []
+        for (const file of files) {
+            const [row] = await transaction`
+                select id, expires_at, password_hash
+                from files
+                where id = ${file.id}
+                    and revocation_token_hash = ${file.revocationTokenHash}
+                    and status = 'ready'
+                    and deleted_at is null
+                    and revoked_at is null
+                    and expires_at is not null
+                    and expires_at > now()
+            `
+            if (!row) return null
+            members.push({ id: row.id, expiresAt: row.expires_at, passwordHash: row.password_hash })
+        }
+
+        const passwordHash = members[0]?.passwordHash ?? null
+        if (!members.length || members.some(member => member.passwordHash !== passwordHash)) return null
+        const expiresAt = members.reduce((earliest, member) => member.expiresAt < earliest ? member.expiresAt : earliest, members[0].expiresAt)
+        if (expiresAt.getTime() <= Date.now()) return null
+
+        await transaction`
+            insert into share_collections (id, expires_at, password_hash, revocation_token_hash)
+            values (${id}, ${expiresAt}, ${passwordHash}, ${revocationTokenHash})
+        `
+        for (const [position, member] of members.entries()) {
+            await transaction`
+                insert into share_collection_files (collection_id, file_id, position)
+                values (${id}, ${member.id}, ${position})
+            `
+        }
+        return { expiresAt, passwordHash }
+    })
+}
+
+export async function findShareCollection(id: string): Promise<ShareCollectionRow | null> {
+    const [row] = await sql`
+        select id, expires_at, password_hash, revoked_at
+        from share_collections
+        where id = ${id}
+    `
+    if (!row) return null
+    return {
+        id: row.id,
+        expiresAt: row.expires_at,
+        passwordHash: row.password_hash,
+        revokedAt: row.revoked_at
+    }
+}
+
+export async function shareCollectionFiles(id: string): Promise<ShareCollectionFileRow[]> {
+    const rows = await sql`
+        select files.id, files.file_name, files.content_type, files.size
+        from share_collection_files
+        join files on files.id = share_collection_files.file_id
+        where share_collection_files.collection_id = ${id}
+            and files.status = 'ready'
+            and files.deleted_at is null
+            and files.revoked_at is null
+        order by share_collection_files.position
+    `
+    return rows.map(row => ({
+        id: row.id,
+        fileName: row.file_name,
+        contentType: row.content_type,
+        size: Number(row.size)
+    }))
+}
+
+export async function revokeShareCollection(id: string, revocationTokenHash: string): Promise<boolean> {
+    return sql.begin(async transaction => {
+        const [row] = await transaction`
+            update share_collections
+            set revoked_at = coalesce(revoked_at, now()), expires_at = least(expires_at, now())
+            where id = ${id} and revocation_token_hash = ${revocationTokenHash}
+            returning id
+        `
+        if (!row) return false
+        await transaction`
+            update files
+            set revoked_at = coalesce(revoked_at, now()), expires_at = least(expires_at, now())
+            where id in (
+                select file_id from share_collection_files where collection_id = ${id}
+            )
+        `
+        return true
+    })
+}
+
+export async function isShareCollectionMember(collectionId: string, fileId: string): Promise<boolean> {
+    const [row] = await sql`
+        select 1
+        from share_collection_files
+        join files on files.id = share_collection_files.file_id
+        where share_collection_files.collection_id = ${collectionId}
+            and share_collection_files.file_id = ${fileId}
+            and files.status = 'ready'
+            and files.deleted_at is null
+            and files.revoked_at is null
+    `
+    return Boolean(row)
+}
+
 // The one question a share link asks: is there a file at this id that somebody
 // is allowed to have? A row that is still uploading, and a row that was
 // cancelled, both answer no, the same as an id that was never used.
