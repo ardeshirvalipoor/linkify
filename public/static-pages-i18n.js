@@ -703,6 +703,18 @@
   const themeButton = document.createElement("button");
   themeButton.type = "button";
   themeButton.className = "theme-toggle";
+
+  const updateBrandLogo = () => {
+    const logo = document.querySelector(".site-brand img");
+    if (!logo) return;
+    logo.src = matchMedia("(max-width: 560px)").matches
+      ? "/linkify-icon.svg"
+      : document.documentElement.dataset.theme === "dark"
+        ? "/linkify-logo-for-dark-bg.svg"
+        : "/linkify-logo-for-light-bg.svg";
+  };
+  window.addEventListener("resize", updateBrandLogo);
+
   themeButton.addEventListener("click", () => {
     const theme = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
     applyTheme(theme, true);
@@ -713,6 +725,7 @@
 
   function applyTheme(theme, persist) {
     document.documentElement.dataset.theme = theme;
+    updateBrandLogo();
     if (persist) {
       try {
         localStorage.setItem("linkify-theme", theme);
@@ -741,9 +754,9 @@
   document.documentElement.lang = language;
   document.documentElement.dir = language === "ar" ? "rtl" : "ltr";
   try {
-    applyTheme(localStorage.getItem("linkify-theme") === "dark" ? "dark" : "light", false);
+    applyTheme(localStorage.getItem("linkify-theme") === "light" ? "light" : "dark", false);
   } catch {
-    applyTheme("light", false);
+    applyTheme("dark", false);
   }
   const selector = document.getElementById("language-select");
   if (selector) selector.value = language;
