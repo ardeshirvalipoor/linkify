@@ -15,7 +15,7 @@ import { consumeUploaderPassword, storeUploaderPassword } from '../../lib/upload
 import { getRevocationToken, storeRevocationToken } from '../../lib/share-revocation'
 import { createSiteNavigation } from '../../lib/site-navigation'
 import { show } from '../../lib/show'
-import { createPreferencesBar, t, translateUploadStatus } from '../../lib/preferences'
+import { createPreferencesBar, languageLocale, t, translateUploadStatus } from '../../lib/preferences'
 import styles from './index.module.css'
 
 const ICONS = {
@@ -40,7 +40,16 @@ function icon(name: IconName): string {
 // and gives a faster answer.
 const MAX_FILE_SIZE = 1024 * 1024 * 1024
 
-type Stage = 'idle' | 'chosen' | 'uploading' | 'done' | 'failed'
+type Stage = 'idle' | 'chosen' | 'uploading' | 'paused' | 'done' | 'failed'
+type QueueStatus = 'ready' | 'uploading' | 'paused' | 'complete' | 'failed'
+
+interface QueueItem {
+    file: File
+    status: QueueStatus
+    id?: string
+    revocationToken?: string
+    url?: string
+}
 
 export const UploadPage = () => {
     const page = Page()
@@ -109,8 +118,6 @@ export const UploadPage = () => {
     ]) {
         const link = Base('a')
         link.el.href = item.href
-        link.el.target = '_blank'
-        link.el.rel = 'noopener noreferrer'
         link.el.textContent = item.label
         aboutLinks.append(link)
     }
@@ -163,6 +170,22 @@ export const UploadPage = () => {
 
     const dropZone = DropZone(t('dropTitle'), t('dropHint'))
 
+    const queuePanel = Div()
+    queuePanel.addClass('upload-queue')
+    const queueTitle = Base('h2')
+    queueTitle.addClass('queue-title')
+    queueTitle.text(t('uploadQueue'))
+    const queueEmpty = P(t('queueEmpty'))
+    queueEmpty.addClass('queue-empty')
+    const queueList = Base('ol')
+    queueList.addClass('queue-list')
+    queuePanel.append(queueTitle, queueEmpty, queueList)
+
+    const toast = Div('')
+    toast.addClass('toast', 'hidden')
+    toast.el.setAttribute('role', 'status')
+    toast.el.setAttribute('aria-live', 'polite')
+
     // Terms live directly under the upload field so an uploader has to agree before
     // a file can be selected or sent.
     const termsRow = Div()
@@ -174,14 +197,10 @@ export const UploadPage = () => {
     const termsText = Span(`${t('agree')} `)
     const termsLink = Base('a')
     termsLink.el.href = '/terms.html'
-    termsLink.el.target = '_blank'
-    termsLink.el.rel = 'noopener noreferrer'
     termsLink.el.textContent = t('terms')
     const termsAnd = Span(` ${t('and')} `)
     const privacyLink = Base('a')
     privacyLink.el.href = '/privacy.html'
-    privacyLink.el.target = '_blank'
-    privacyLink.el.rel = 'noopener noreferrer'
     privacyLink.el.textContent = t('privacy')
     termsLabel.append(termsCheckbox, termsText, termsLink, termsAnd, privacyLink)
     termsRow.append(termsLabel)
@@ -219,9 +238,15 @@ export const UploadPage = () => {
     const discardButton = Button(t('discard'))
     discardButton.addClass('button', 'secondary')
 
+    const pauseButton = Button(t('pauseUpload'))
+    pauseButton.addClass('button', 'secondary')
+
+    const resumeQueueButton = Button(t('resumeQueue'))
+    resumeQueueButton.addClass('button', 'primary')
+
     const actions = Div()
     actions.addClass('actions')
-    actions.append(uploadButton, discardButton)
+    actions.append(uploadButton, discardButton, pauseButton, resumeQueueButton)
 
     // --- while it runs -------------------------------------------------------
 
@@ -324,16 +349,22 @@ export const UploadPage = () => {
     endActions.addClass('actions')
     endActions.append(retryButton, revokeButton, againButton)
 
-    card.append(heading, intro, expiryRow, passwordRow, dropZone, previewWrap, fileRow, resumeNote, actions, termsRow, progress, status, shareRow, expirySummary, error, endActions)
-    page.append(siteNavigation, preferencesBar, card, benefitsWrap, aboutWrap, qrModal, revokeConfirmModal)
+    card.append(heading, intro, expiryRow, passwordRow, dropZone, queuePanel, previewWrap, fileRow, resumeNote, actions, termsRow, progress, status, shareRow, expirySummary, error, endActions)
+    page.append(siteNavigation, preferencesBar, toast, card, benefitsWrap, aboutWrap, qrModal, revokeConfirmModal)
 
     // --- state ---------------------------------------------------------------
 
     let chosen: File | null = null
+    let queue: QueueItem[] = []
     let canResume = false
+    let currentAbortController: AbortController | null = null
+    let pauseRequested = false
+    let isUploading = false
+    let toastTimer = 0
     let previewUrl: string | null = null
     let currentShareUrl = ''
     let currentRevocationToken = ''
+    let collectionCreated = false
     let revocationTokenSaved = true
     let linkRevoked = false
     // Keep viewer URLs identical to the public share link.
@@ -375,6 +406,7 @@ export const UploadPage = () => {
 
             const ownerPassword = consumeUploaderPassword(match[1]) ?? ''
             const file = await api.fileInfo(match[1], ownerPassword || undefined, shareUrl)
+            if ('files' in file) throw new Error('This link contains multiple files. Open the share page to choose one.')
             chosen = null
             canResume = false
             fileName.text(file.fileName)
@@ -404,24 +436,66 @@ export const UploadPage = () => {
         }
     }
 
+    function renderQueue() {
+        queueList.el.replaceChildren()
+        show(queueEmpty, queue.length === 0)
+        for (const item of queue) {
+            const row = Div()
+            row.addClass('queue-item')
+            const details = Div()
+            details.addClass('queue-file')
+            const name = Span(item.file.name)
+            name.addClass('queue-file-name')
+            const size = Span(fileSize(item.file.size))
+            size.addClass('queue-file-size')
+            details.append(name, size)
+            const state = Span(t(item.status === 'ready' ? 'queued' : item.status))
+            state.addClass('queue-state', `queue-${item.status}`)
+            row.append(details, state)
+            if (item.url) {
+                const link = Base('a')
+                link.el.href = item.url
+                link.el.textContent = 'Open link'
+                link.addClass('queue-link')
+                row.append(link)
+            }
+            queueList.append(row)
+        }
+    }
+
+    function notify(message: string, kind: 'success' | 'error' | 'info') {
+        window.clearTimeout(toastTimer)
+        toast.text(message)
+        toast.removeClass('toast-success', 'toast-error', 'toast-info')
+        toast.addClass(`toast-${kind}`)
+        show(toast, true)
+        toastTimer = window.setTimeout(() => show(toast, false), 4500)
+    }
+
     function setStage(stage: Stage) {
-        show(dropZone, stage === 'idle')
+        show(dropZone, stage === 'idle' || stage === 'chosen')
+        show(queuePanel, true)
         show(expiryRow, stage === 'idle' || stage === 'chosen')
         show(passwordRow, stage === 'idle' || stage === 'chosen')
         show(termsRow, stage === 'idle' || stage === 'chosen')
-        show(previewWrap, stage === 'chosen' || stage === 'uploading')
+        show(previewWrap, stage === 'chosen' || stage === 'uploading' || stage === 'paused')
         show(fileRow, stage !== 'idle')
         show(resumeNote, stage === 'chosen' && canResume)
-        show(actions, stage === 'chosen')
-        show(discardButton, canResume)
-        show(progress, stage === 'uploading')
-        show(status, stage === 'uploading')
+        show(actions, stage === 'chosen' || stage === 'uploading' || stage === 'paused')
+        show(uploadButton, stage === 'chosen')
+        show(discardButton, stage === 'chosen' && canResume)
+        show(pauseButton, stage === 'uploading')
+        show(resumeQueueButton, stage === 'paused')
+        show(progress, stage === 'uploading' || stage === 'paused')
+        show(status, stage === 'uploading' || stage === 'paused')
         show(shareRow, stage === 'done')
         show(expirySummary, stage === 'done')
         show(error, stage === 'failed')
         show(endActions, stage === 'done' || stage === 'failed')
-        show(retryButton, stage === 'failed')
-        retryButton.text(canResume ? t('resumeUpload') : t('tryAgain'))
+        const hasPendingQueueItems = queue.some(item => item.status === 'ready' || item.status === 'paused' || item.status === 'failed')
+            || (queue.filter(item => item.status === 'complete').length > 1 && !collectionCreated)
+        show(retryButton, stage === 'failed' || (stage === 'done' && hasPendingQueueItems))
+        retryButton.text(canResume || queue.some(item => item.status === 'paused') ? t('resumeUpload') : t('tryAgain'))
         show(revokeButton, stage === 'done' && Boolean(currentRevocationToken) && !linkRevoked)
     }
 
@@ -466,7 +540,7 @@ export const UploadPage = () => {
         }
     }
 
-    async function choose(file: File) {
+    async function chooseFiles(files: File[]) {
         if (!termsCheckbox.el.checked) {
             error.text(t('acceptBeforeSelect'))
             setStage('failed')
@@ -476,29 +550,31 @@ export const UploadPage = () => {
             return
         }
 
-        if (file.size > MAX_FILE_SIZE) {
-            chosen = null
-            error.text(t('tooLarge', { name: file.name, size: fileSize(file.size) }))
-            setStage('failed')
-            show(fileRow, false)
-            show(retryButton, false)
-            resetPreview()
-            return
+        for (const file of files) {
+            if (file.size > MAX_FILE_SIZE) {
+                notify(t('tooLarge', { name: file.name, size: fileSize(file.size) }), 'error')
+                continue
+            }
+            const duplicate = queue.some(item => item.file.name === file.name && item.file.size === file.size && item.file.lastModified === file.lastModified)
+            if (!duplicate) queue.push({ file, status: 'ready' })
         }
 
-        chosen = file
-        canResume = Boolean(await resumableUpload(file))
+        if (!queue.length) return
+        chosen = queue.find(item => item.status !== 'complete')?.file ?? queue[0].file
+        canResume = Boolean(await resumableUpload(chosen))
 
-        fileName.text(file.name)
-        fileMeta.text(fileSize(file.size))
+        fileName.text(chosen.name)
+        fileMeta.text(queue.length > 1 ? `${queue.length} files · ${fileSize(queue.reduce((total, item) => total + item.file.size, 0))}` : fileSize(chosen.size))
         uploadButton.text(canResume ? t('continueUpload') : t('upload'))
-        renderPreview(file)
+        renderPreview(chosen)
+        renderQueue()
 
         setStage('chosen')
     }
 
     async function run() {
-        if (!chosen) return
+        if (!queue.some(item => item.status !== 'complete') && collectionCreated) return
+        if (!queue.length) return
 
         if (!termsCheckbox.el.checked) {
             error.text(t('acceptBeforeUpload'))
@@ -523,6 +599,7 @@ export const UploadPage = () => {
         // Clear any earlier result before this upload starts so actions cannot reuse a stale link.
         currentShareUrl = ''
         currentRevocationToken = ''
+        collectionCreated = false
         linkRevoked = false
         shareInput.setValue('')
         expirySummary.text('')
@@ -531,39 +608,107 @@ export const UploadPage = () => {
         if (canResume) progress.prepareResume()
         else progress.reset()
         status.text(t('preparingUpload'))
+        pauseRequested = false
+        isUploading = true
         setStage('uploading')
 
         try {
-            const finished = await uploadFile(chosen, {
-                onStatus: message => status.text(translateUploadStatus(message)),
-                onProgress: report => progress.update(report.uploadedBytes, report.totalBytes)
-            }, expiresIn, password)
+            for (const item of queue) {
+                if (item.status === 'complete') continue
 
-            currentShareUrl = finished.url
-            currentRevocationToken = finished.revocationToken
-            revocationTokenSaved = storeRevocationToken(finished.id, finished.revocationToken)
-            shareInput.setValue(currentShareUrl)
-            // Every completed upload can open its dedicated preview or download page.
-            show(previewButton, true)
-            const expiryText = t('expirySummary', { duration: expiryChoices.find(choice => choice.value === expiresIn)?.label ?? '' })
-            expirySummary.text(revocationTokenSaved ? expiryText : `${expiryText} ${t('revocationNotSaved')}`)
-            canResume = false
-            setStage('done')
-        } catch (problem) {
-            const message = problem instanceof Error ? problem.message : t('uploadFailed')
-            error.text(message)
-            try {
-                canResume = Boolean(await resumableUpload(chosen))
-            } catch (resumeProblem) {
-                canResume = false
-                const detail = resumeProblem instanceof Error ? resumeProblem.message : t('uploadFailed')
-                error.text(`${message} (${detail})`)
+                chosen = item.file
+                currentAbortController = new AbortController()
+                item.status = 'uploading'
+                fileName.text(item.file.name)
+                fileMeta.text(fileSize(item.file.size))
+                renderPreview(item.file)
+                renderQueue()
+
+                try {
+                    canResume = Boolean(await resumableUpload(item.file))
+                    if (canResume) progress.prepareResume()
+                    else progress.reset()
+                    const finished = await uploadFile(item.file, {
+                        onStatus: message => status.text(translateUploadStatus(message)),
+                        onProgress: report => progress.update(report.uploadedBytes, report.totalBytes),
+                        signal: currentAbortController.signal
+                    }, expiresIn, password)
+
+                    item.status = 'complete'
+                    item.id = finished.id
+                    item.revocationToken = finished.revocationToken
+                    item.url = finished.url
+                    currentShareUrl = finished.url
+                    currentRevocationToken = finished.revocationToken
+                    revocationTokenSaved = storeRevocationToken(finished.id, finished.revocationToken)
+                    shareInput.setValue(currentShareUrl)
+                    show(previewButton, true)
+                    notify(t('uploadSuccess', { name: item.file.name }), 'success')
+                    canResume = false
+                } catch (problem) {
+                    if (pauseRequested || (problem instanceof Error && problem.name === 'AbortError')) {
+                        item.status = 'paused'
+                        canResume = true
+                        status.text(t('uploadPaused'))
+                        renderQueue()
+                        setStage('paused')
+                        return
+                    }
+                    item.status = 'failed'
+                    const message = problem instanceof Error ? problem.message : t('uploadFailed')
+                    error.text(message)
+                    notify(t('uploadFailure', { name: item.file.name }), 'error')
+                    canResume = Boolean(await resumableUpload(item.file).catch(() => undefined))
+                } finally {
+                    currentAbortController = null
+                }
+                renderQueue()
             }
+
+            const hasCompletedFiles = queue.some(item => item.status === 'complete')
+            if (hasCompletedFiles) {
+                const completedFiles = queue.filter((item): item is QueueItem & { id: string; revocationToken: string } =>
+                    item.status === 'complete' && Boolean(item.id) && Boolean(item.revocationToken)
+                )
+                if (completedFiles.length > 1) {
+                    const collection = await api.createShareCollection(completedFiles.map(item => ({
+                        id: item.id,
+                        revocationToken: item.revocationToken
+                    })))
+                    currentShareUrl = collection.url
+                    currentRevocationToken = collection.revocationToken
+                    collectionCreated = true
+                    revocationTokenSaved = storeRevocationToken(collection.id, collection.revocationToken)
+                    shareInput.setValue(currentShareUrl)
+                    for (const item of completedFiles) item.url = collection.url
+                    renderQueue()
+                }
+                const expiryText = collectionCreated
+                    ? t('linkExpiresAt', { date: new Date(Number(new URL(currentShareUrl).searchParams.get('expires')) * 1000).toLocaleString(languageLocale()) })
+                    : t('expirySummary', { duration: expiryChoices.find(choice => choice.value === expiresIn)?.label ?? '' })
+                expirySummary.text(revocationTokenSaved ? expiryText : `${expiryText} ${t('revocationNotSaved')}`)
+                setStage('done')
+            } else {
+                setStage('failed')
+            }
+        } catch (problem) {
+            error.text(problem instanceof Error ? problem.message : t('uploadFailed'))
+            show(error, true)
+            notify(t('uploadFailure', { name: t('uploadQueue') }), 'error')
             setStage('failed')
+        } finally {
+            isUploading = false
+            currentAbortController = null
         }
     }
 
-    dropZone.on('file', (file: File) => { void choose(file) })
+    window.addEventListener('beforeunload', event => {
+        if (!isUploading) return
+        event.preventDefault()
+        event.returnValue = ''
+    })
+
+    dropZone.on('files', (files: File[]) => { void chooseFiles(files) })
     uploadButton.on('click', () => {
         if (!termsCheckbox.el.checked) {
             error.text(t('acceptBeforeUpload'))
@@ -573,6 +718,11 @@ export const UploadPage = () => {
         void run()
     })
     retryButton.on('click', () => { void run() })
+    resumeQueueButton.on('click', () => { void run() })
+    pauseButton.on('click', () => {
+        pauseRequested = true
+        currentAbortController?.abort()
+    })
 
     // The modal opens before the HTTP revoke request so the user can decide to
     // abort the destructive action without accidentally disabling the link.
@@ -631,14 +781,18 @@ export const UploadPage = () => {
 
     againButton.on('click', () => {
         chosen = null
+        queue = []
         canResume = false
         currentShareUrl = ''
         currentRevocationToken = ''
+        collectionCreated = false
         linkRevoked = false
         shareInput.setValue('')
         expirySummary.text('')
         error.text('')
         show(error, false)
+        renderQueue()
+        show(toast, false)
         progress.reset()
         passwordToggle.el.checked = false
         passwordInput.setValue('')

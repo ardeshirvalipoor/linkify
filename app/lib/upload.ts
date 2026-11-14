@@ -28,6 +28,7 @@ export interface UploadReport {
 export interface UploadOptions {
     onStatus(message: string): void
     onProgress(report: UploadReport): void
+    signal?: AbortSignal
 }
 
 // The password is passed only at completion, so a resumed upload uses the
@@ -62,7 +63,7 @@ export async function uploadFile(file: File, options: UploadOptions, expiresIn: 
         await sendPart(upload.token, partNumber, part, sentBytes => {
             inFlightBytes.set(partNumber, sentBytes)
             report()
-        })
+        }, options.signal)
 
         // The part landed, so its bytes move from "in the air" to "settled".
         inFlightBytes.delete(partNumber)
@@ -70,6 +71,7 @@ export async function uploadFile(file: File, options: UploadOptions, expiresIn: 
         report()
     })
 
+    throwIfAborted(options.signal)
     options.onStatus('Putting the parts together')
     const finished = await api.finishUpload(upload.token, expiresIn, password).catch(async (problem: unknown) => {
         // The storage no longer has this upload, so the note can never be resumed.
@@ -143,14 +145,17 @@ async function openUpload(file: File, id: string, options: UploadOptions): Promi
 }
 
 // Sends one part, with a fresh URL and a fresh try each time it fails.
-async function sendPart(token: string, partNumber: number, part: Blob, onProgress: (sentBytes: number) => void): Promise<void> {
+async function sendPart(token: string, partNumber: number, part: Blob, onProgress: (sentBytes: number) => void, signal?: AbortSignal): Promise<void> {
     for (let attempt = 1; attempt <= ATTEMPTS_PER_PART; attempt++) {
         try {
+            throwIfAborted(signal)
             // A new URL every attempt, in case the previous one had gone stale.
             const url = await api.partUrl(token, partNumber)
-            await put(url, part, onProgress)
+            throwIfAborted(signal)
+            await put(url, part, onProgress, signal)
             return
         } catch (problem) {
+            if (isAbort(problem)) throw problem
             if (attempt === ATTEMPTS_PER_PART) {
                 const cause = problem instanceof Error ? problem.message : 'unknown reason'
                 throw new Error(`Part ${partNumber} failed ${ATTEMPTS_PER_PART} times in a row: ${cause}`)
@@ -171,9 +176,27 @@ async function sendPart(token: string, partNumber: number, part: Blob, onProgres
 // a presigned URL only accepts the exact request it was signed for: a PUT with
 // the raw bytes and nothing added. fetch() cannot report upload progress at all,
 // so XMLHttpRequest it is.
-function put(url: string, body: Blob, onProgress: (sentBytes: number) => void): Promise<void> {
+function put(url: string, body: Blob, onProgress: (sentBytes: number) => void, signal?: AbortSignal): Promise<void> {
     return new Promise((resolve, reject) => {
         const request = new XMLHttpRequest()
+        let settled = false
+        const cleanup = () => signal?.removeEventListener('abort', abort)
+        const finish = (action: () => void) => {
+            if (settled) return
+            settled = true
+            cleanup()
+            action()
+        }
+        const abort = () => {
+            request.abort()
+            finish(() => reject(abortError()))
+        }
+
+        if (signal?.aborted) {
+            reject(abortError())
+            return
+        }
+
         request.open('PUT', url)
 
         request.upload.onprogress = event => {
@@ -181,13 +204,29 @@ function put(url: string, body: Blob, onProgress: (sentBytes: number) => void): 
         }
 
         request.onload = () => {
-            if (request.status >= 200 && request.status < 300) resolve()
-            else reject(new Error(`The storage answered ${request.status}`))
+            if (request.status >= 200 && request.status < 300) finish(resolve)
+            else finish(() => reject(new Error(`The storage answered ${request.status}`)))
         }
 
-        request.onerror = () => reject(new Error('The connection dropped'))
+        request.onerror = () => finish(() => reject(new Error('The connection dropped')))
+        request.onabort = () => finish(() => reject(abortError()))
+        signal?.addEventListener('abort', abort, { once: true })
         request.send(body)
     })
+}
+
+function throwIfAborted(signal?: AbortSignal): void {
+    if (signal?.aborted) throw abortError()
+}
+
+function abortError(): Error {
+    const problem = new Error('The upload was paused')
+    problem.name = 'AbortError'
+    return problem
+}
+
+function isAbort(problem: unknown): boolean {
+    return problem instanceof Error && problem.name === 'AbortError'
 }
 
 // A window onto one part of the file. slice() reads nothing; the bytes are only

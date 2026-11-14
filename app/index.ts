@@ -32,4 +32,5 @@ ready().then(() => {
         '/f/:id': DownloadPage,
         '*': MissingPage
     }, view)
+       document.getElementById('app-loading')?.remove()
 })

@@ -6,6 +6,7 @@
 
 import { Base, Button, Div, H1, Input, P, Page, IRouteEvent } from '@codesuma/baseline'
 import { fileInfo } from '../../lib/api'
+import { collectionFileDownloadUrl } from '../../lib/api'
 import { fileSize } from '../../lib/format'
 import { createPreferencesBar, languageLocale, t } from '../../lib/preferences'
 import { createSiteNavigation } from '../../lib/site-navigation'
@@ -44,6 +45,10 @@ export const DownloadPage = () => {
     previewMedia.addClass('download-preview-media')
     previewWrap.append(previewMedia)
 
+    const collectionFiles = Div()
+    collectionFiles.addClass('collection-files')
+    show(collectionFiles, false)
+
     const passwordWrap = Div()
     passwordWrap.el.style.display = 'none'
     passwordWrap.el.style.margin = '12px 0'
@@ -77,7 +82,7 @@ export const DownloadPage = () => {
     const error = P('')
     error.addClass('error')
 
-    card.append(heading, meta, previewWrap, passwordWrap, actions, error)
+    card.append(heading, meta, previewWrap, collectionFiles, passwordWrap, actions, error)
     page.append(siteNavigation, preferencesBar, card)
 
     let downloadPath = ''
@@ -136,6 +141,8 @@ export const DownloadPage = () => {
         show(error, false)
         show(passwordWrap, false)
         show(passwordError, false)
+        show(collectionFiles, false)
+        collectionFiles.el.replaceChildren()
         heading.text(t('loading'))
         meta.text('')
         resetPreview()
@@ -152,9 +159,36 @@ export const DownloadPage = () => {
 
             // Hide password controls after the supplied password has been accepted.
             show(passwordWrap, false)
-            heading.text(file.fileName)
             const expiresAt = Number(new URLSearchParams(window.location.search).get('expires'))
             const expiryDate = new Date(expiresAt * 1000).toLocaleString(languageLocale())
+
+            if ('files' in file) {
+                heading.text(t('chooseFile'))
+                meta.text(`${file.files.length} files · ${t('linkExpiresAt', { date: expiryDate })}`)
+                const shareUrl = new URL(window.location.href)
+                for (const item of file.files) {
+                    const row = Div()
+                    row.addClass('collection-file')
+                    const details = Div()
+                    details.addClass('collection-file-details')
+                    const name = Base('strong')
+                    name.text(item.fileName)
+                    const size = P(fileSize(item.size))
+                    size.addClass('collection-file-size')
+                    details.append(name, size)
+                    const itemDownloadButton = Button(t('download'))
+                    itemDownloadButton.addClass('button', 'primary')
+                    itemDownloadButton.on('click', () => {
+                        window.location.href = collectionFileDownloadUrl(id, item.id, shareUrl, password)
+                    })
+                    row.append(details, itemDownloadButton)
+                    collectionFiles.append(row)
+                }
+                show(collectionFiles, true)
+                return
+            }
+
+            heading.text(file.fileName)
             meta.text(`${fileSize(file.size)} · ${t('linkExpiresAt', { date: expiryDate })}`)
 
             const query = new URLSearchParams(window.location.search)

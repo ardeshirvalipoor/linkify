@@ -38,6 +38,14 @@ export interface FileInfo {
     protected: boolean
 }
 
+export interface FileCollectionInfo {
+    id: string
+    files: FileInfo[]
+    protected: boolean
+}
+
+export type ShareInfo = FileInfo | FileCollectionInfo
+
 export async function startUpload(file: File): Promise<StartedUpload> {
     return unwrap<StartedUpload>(await http.post('/api/uploads', {
         fileName: file.name,
@@ -66,16 +74,27 @@ export async function revokeShareLink(id: string, revocationToken: string): Prom
     unwrap(await http.post(`/api/files/${id}/revoke`, { revocationToken }))
 }
 
+export async function createShareCollection(files: { id: string; revocationToken: string }[]): Promise<{ id: string; url: string; revocationToken: string }> {
+    return unwrap(await http.post('/api/files/collections', { files }))
+}
+
 export async function cancelUpload(token: string): Promise<void> {
     unwrap(await http.delete(`/api/uploads/${token}`))
 }
 
-export async function fileInfo(id: string, password?: string, shareUrl?: URL): Promise<FileInfo> {
+export async function fileInfo(id: string, password?: string, shareUrl?: URL): Promise<ShareInfo> {
     const query = new URLSearchParams(shareUrl?.search ?? window.location.search)
     // Passwords must be entered in the viewer, never inherited from a copied URL.
     query.delete('password')
     if (password) query.set('password', password)
     return unwrap<FileInfo>(await http.get(`/api/files/${id}?${query.toString()}`))
+}
+
+export function collectionFileDownloadUrl(collectionId: string, fileId: string, shareUrl: URL, password?: string): string {
+    const query = new URLSearchParams(shareUrl.search)
+    query.delete('password')
+    if (password) query.set('password', password)
+    return `/api/files/${collectionId}/items/${fileId}/download?${query.toString()}`
 }
 
 function unwrap<T>(response: { status: number; data: any }): T {

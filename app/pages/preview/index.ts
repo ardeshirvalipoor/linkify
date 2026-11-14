@@ -121,6 +121,12 @@ export const PreviewPage = () => {
 
         try {
             const file = await fileInfo(id, password)
+            if ('files' in file) {
+                const collectionUrl = new URL(window.location.href)
+                collectionUrl.pathname = `/f/${id}`
+                window.location.replace(collectionUrl.toString())
+                return
+            }
             currentId = file.id
             const query = new URLSearchParams(window.location.search)
             const expiresAt = Number(query.get('expires'))

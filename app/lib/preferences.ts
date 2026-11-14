@@ -1,4 +1,5 @@
 import { Button, Div, Base, Span } from '@codesuma/baseline'
+import { updateSiteLogos } from './site-navigation'
 
 export type Language = 'en' | 'es' | 'fr' | 'de' | 'ar' | 'hi' | 'zh' | 'tr' | 'ja' | 'ru' | 'pt' | 'ko'
 
@@ -27,6 +28,8 @@ type TranslationKey =
     | 'aboutTitle' | 'aboutDescription' | 'expiryLabel' | 'hour' | 'day' | 'week'
     | 'protect' | 'passwordPlaceholder' | 'agree' | 'terms' | 'and' | 'privacy'
     | 'dropTitle' | 'dropHint' | 'resumeNote' | 'upload' | 'continueUpload' | 'discard'
+    | 'uploadQueue' | 'queueEmpty' | 'queued' | 'uploading' | 'paused' | 'complete' | 'failed' | 'chooseFile'
+    | 'pauseUpload' | 'resumeQueue' | 'uploadSuccess' | 'uploadFailure' | 'uploadPaused'
     | 'preparingUpload' | 'assemblingParts' | 'sendingParts' | 'continuingUpload'
     | 'expirySummary' | 'linkExpiresAt' | 'copy' | 'copied' | 'openLink' | 'qrCode' | 'qrCodeTitle' | 'close' | 'tryAgain' | 'resumeUpload' | 'sendAnother'
     | 'revokeLink' | 'linkRevoked' | 'confirmRevoke' | 'revokeWarning' | 'revocationNotSaved' | 'revocationStatusNotSaved'
@@ -38,7 +41,7 @@ type TranslationKey =
 
 type Dictionary = Record<TranslationKey, string>
 
-const translations: Partial<Record<Language, Dictionary>> = {
+const translations: Partial<Record<Language, Partial<Dictionary>>> = {
     en: {
         language: 'Language', switchDark: 'Switch to dark mode', switchLight: 'Switch to light mode',
         intro: 'Share a file in seconds. Send up to 1 GB and pick up interrupted uploads where they left off.',
@@ -52,6 +55,9 @@ const translations: Partial<Record<Language, Dictionary>> = {
         dropTitle: 'Choose a file or drop it here', dropHint: 'Up to 1 GB. Resume in the same browser for up to 7 days by choosing the same file again.',
         resumeNote: 'Completed parts from an earlier attempt are still stored. Choose this same file in this browser within 7 days to continue; a part interrupted mid-transfer must be sent again.',
         upload: 'Upload', continueUpload: 'Continue upload', discard: 'Start fresh', preparingUpload: 'Preparing the upload',
+        uploadQueue: 'Upload queue', queueEmpty: 'No files queued yet.', queued: 'Queued', uploading: 'Uploading', paused: 'Paused', complete: 'Complete', failed: 'Failed',
+        chooseFile: 'Choose a file',
+        pauseUpload: 'Pause upload', resumeQueue: 'Resume queue', uploadSuccess: '{name} uploaded successfully.', uploadFailure: '{name} could not be uploaded.', uploadPaused: 'Upload paused. Your completed parts are saved.',
         assemblingParts: 'Putting the parts together', sendingParts: 'Sending {missing} of {total} parts',
         continuingUpload: 'Continuing an earlier upload, {sent} of {total} parts already sent',
         expirySummary: 'This link is set to expire {duration} after upload completes.', linkExpiresAt: 'Link expires {date}', copy: 'Copy', copied: 'Copied', openLink: 'Open', qrCode: 'QR', qrCodeTitle: 'Scan this QR code', close: 'Close', tryAgain: 'Try again', resumeUpload: 'Resume', sendAnother: 'Send another file',
@@ -452,11 +458,11 @@ export function t(key: TranslationKey, values: Record<string, string | number> =
 // Apply persisted display preferences before routing creates the page.
 export function initializePreferences(): void {
     const language = currentLanguage()
-    let theme = 'light'
+    let theme = 'dark'
     try {
-        theme = localStorage.getItem('linkify-theme') === 'dark' ? 'dark' : 'light'
+        theme = localStorage.getItem('linkify-theme') === 'light' ? 'light' : 'dark'
     } catch {
-        theme = 'light'
+        theme = 'dark'
     }
     document.documentElement.dataset.theme = theme
     document.documentElement.lang = language
@@ -482,6 +488,7 @@ export function createPreferencesBar() {
     themeButton.on('click', () => {
         const theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'
         document.documentElement.dataset.theme = theme
+        updateSiteLogos()
         try {
             localStorage.setItem('linkify-theme', theme)
         } catch {
