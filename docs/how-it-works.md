@@ -155,16 +155,18 @@ It is an index. It answers the questions the bucket cannot.
 - Whose file is it? Nothing fills this one in yet.
 
 It runs on Supabase, which is ordinary Postgres with other things built around
-it. We use only the Postgres part. One file talks to it, `api/lib/db.ts`, in the
+it. We use only the Postgres part. One module talks to it, `api/lib/db/`, in the
 same way that one file talks to R2. The schema lives in `supabase/migrations`.
 
-There are three tables.
+There are five tables.
 
-| Table       | One row for                            |
-| ----------- | -------------------------------------- |
-| `files`     | Every upload that has been started     |
-| `downloads` | Every download that has happened       |
-| `profiles`  | Every account, once there are accounts |
+| Table                    | One row for                            |
+| ------------------------ | -------------------------------------- |
+| `files`                  | Every upload that has been started     |
+| `downloads`              | Every download that has happened       |
+| `profiles`               | Every account, once there are accounts |
+| `share_collections`      | Every link that holds several files    |
+| `share_collection_files` | Every file in such a link              |
 
 ### The row goes in before the bytes
 
@@ -204,8 +206,8 @@ the server's secret goes into the hash as well. What is left is enough to tell
 two downloads apart and useless for anything else.
 
 Supabase also publishes every table through a REST API that its public key can
-reach. All three tables have row level security turned on and no policies
-written, which means that API can see nothing at all. Our server connects as the
+reach. Every table has row level security turned on and no policies written,
+which means that API can see nothing at all. Our server connects as the
 database owner, and those rules do not apply to it.
 
 ## The five requests, end to end
@@ -219,6 +221,12 @@ database owner, and those rules do not apply to it.
 | 5    | `POST /api/uploads/:token/complete`           | Glue the parts, return the link    |
 
 Step 3 and step 4 repeat, three parts at a time.
+
+Several files take steps 1 to 4 one after another, and step 5 waits until every
+file has been sent. Step 5 starts a link's lifetime, so this keeps a long queue
+from using up that time. One more request, `POST /api/files/collections`, then
+joins the finished files into one link. It sends each file's revocation token,
+which proves this browser uploaded the file.
 
 Downloading is shorter. The share link `/f/:id` opens the app. The app calls
 `GET /api/files/:id`, which reads the row for that id and answers with the name
@@ -257,10 +265,11 @@ Start here, in this order.
 
 1. `api/config.ts` — every setting and every limit in one place.
 2. `api/lib/storage.ts` — the only file that talks to R2.
-3. `api/lib/db.ts` — the only file that talks to Postgres.
+3. `api/lib/db/` — the only module that talks to Postgres.
 4. `api/services/uploads.ts` — the four steps of an upload, as functions.
 5. `app/lib/upload.ts` — the browser side of the same four steps.
-6. `app/pages/upload/index.ts` — the screen, and nothing else.
+6. `app/lib/upload-queue.ts` — several files in a row, then one link for them.
+7. `app/pages/upload/index.ts` — the screen, and nothing else.
 
 The server has four layers, and each one has a single job.
 
@@ -281,7 +290,3 @@ Each of these is a small, self-contained change.
 - **Show the download count.** Every download is already recorded, and
   `files.download_count` is already kept up to date. Nothing displays it. One
   more field in the API response, and one more line on the download page.
-- **Many files at once.** The upload engine already handles one file. Making the
-  page hold a list of them changes only the page.
-- **Pause and resume controls.** Keep the `XMLHttpRequest` objects in a list and
-  call `abort()` on them to offer an explicit pause button.

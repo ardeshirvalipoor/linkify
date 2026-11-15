@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { createShareLink, hashPassword, verifyShareLink } from './share-link'
+import { createShareLink, hashPassword, shareLinkExpiresAt, verifyShareLink } from './share-link'
 
 // This regression test guards the password hashing flow. It makes sure the hash is
 // stable and that unsigned share links continue to work exactly as before.
@@ -11,7 +11,7 @@ test('hashPassword is stable and share links still validate without a password',
     assert.notEqual(hash, password)
     assert.equal(hashPassword(password), hash)
 
-    const url = new URL(createShareLink('abc123', '1h'))
+    const url = new URL(createShareLink('abc123', shareLinkExpiresAt('1h')))
     const expires = url.searchParams.get('expires')
     const signature = url.searchParams.get('signature')
 
@@ -23,7 +23,7 @@ test('hashPassword is stable and share links still validate without a password',
 // A valid signature does not keep a link usable after its deadline.
 test('share links are rejected after their signed expiration time', () => {
     const expiredAt = Math.floor(Date.now() / 1000) - 1
-    const url = new URL(createShareLink('abc123', '1h', expiredAt))
+    const url = new URL(createShareLink('abc123', expiredAt))
 
     assert.throws(
         () => verifyShareLink('abc123', url.searchParams.get('expires'), url.searchParams.get('signature')),

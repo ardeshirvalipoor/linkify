@@ -15,13 +15,23 @@
     <meta name="twitter:card" content="summary">
     <meta name="twitter:title" content="Linkify | Private file sharing">
     <meta name="twitter:description" content="Share files privately with a link. Uploads up to 1 GB, and they resume if your connection drops">
+    <script src="/theme.js"></script>
     <link rel="stylesheet" href="/bundle.css">
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link rel="icon" href="/favicon.ico" sizes="32x32">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 </head>
 
 <!-- The server sends this same page for every address, including share links.
      The app's router reads the address and decides what to draw. -->
 
 <body>
+    <!-- A placeholder until the app draws its first page. app/index.ts removes it. -->
+    <div id="app-loading" class="app-skeleton" role="status" aria-label="Loading Linkify">
+        <span class="skeleton-line"></span>
+        <span class="skeleton-line"></span>
+        <span class="skeleton-line"></span>
+    </div>
     <script type="module" src="/bundle.js"></script>
 </body>
 

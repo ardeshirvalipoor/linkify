@@ -13,12 +13,13 @@ export function createSiteNavigation() {
     const header = Base('header')
     header.addClass('site-header')
 
+    // The logo is the link's background, chosen by CSS for the theme and the
+    // screen width, so the label is what a screen reader says.
     const brand = Base('a')
     brand.addClass('site-brand')
     brand.el.href = '/'
     brand.el.target = '_blank'
     brand.el.rel = 'noopener noreferrer'
-    brand.el.textContent = 'Linkify'
     brand.el.setAttribute('aria-label', 'Linkify home')
 
     const nav = Base('nav')

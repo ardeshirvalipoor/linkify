@@ -16,8 +16,8 @@ export function shareLinkExpiresAt(duration: LinkExpiry): number {
     return Math.floor(Date.now() / 1000) + expirySeconds[duration]
 }
 
-// Start the lifetime after upload completion and sign both the file id and expiry.
-export function createShareLink(id: string, duration: LinkExpiry, expiresAt = shareLinkExpiresAt(duration)): string {
+// Signs both the share id and the moment the link stops working, in seconds.
+export function createShareLink(id: string, expiresAt: number): string {
     const signature = sign(id, String(expiresAt))
     const query = new URLSearchParams({ expires: String(expiresAt), signature })
 

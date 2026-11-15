@@ -4,7 +4,8 @@
 import { Base, Button, Div, H1, Input, P, Page, IRouteEvent } from '@codesuma/baseline'
 import { fileInfo } from '../../lib/api'
 import { fileSize } from '../../lib/format'
-import { createPreferencesBar, languageLocale, t } from '../../lib/preferences'
+import { languageLocale, t } from '../../lib/i18n'
+import { createPreferencesBar } from '../../lib/preferences'
 import { createSiteNavigation } from '../../lib/site-navigation'
 import { show } from '../../lib/show'
 import { storeUploaderPassword } from '../../lib/uploader-password'
@@ -121,6 +122,12 @@ export const PreviewPage = () => {
 
         try {
             const file = await fileInfo(id, password)
+            if ('files' in file) {
+                const collectionUrl = new URL(window.location.href)
+                collectionUrl.pathname = `/f/${id}`
+                window.location.replace(collectionUrl.toString())
+                return
+            }
             currentId = file.id
             const query = new URLSearchParams(window.location.search)
             const expiresAt = Number(query.get('expires'))

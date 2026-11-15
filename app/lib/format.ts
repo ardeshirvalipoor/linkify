@@ -28,3 +28,15 @@ export function transferRate(bytes: number, milliseconds: number): string {
     if (milliseconds < 1000) return ''
     return `${fileSize(bytes / (milliseconds / 1000))}/s`
 }
+
+// "5 min" or "1 hr 5 min", rounded up, with the units in the reader's language.
+export function duration(seconds: number, locale: string): string {
+    const unit = (value: number, name: 'second' | 'minute' | 'hour') =>
+        new Intl.NumberFormat(locale, { style: 'unit', unit: name, unitDisplay: 'short' }).format(value)
+
+    if (seconds < 60) return unit(Math.ceil(seconds), 'second')
+    const minutes = Math.ceil(seconds / 60)
+    if (minutes < 60) return unit(minutes, 'minute')
+    const hours = Math.floor(minutes / 60)
+    return minutes % 60 ? `${unit(hours, 'hour')} ${unit(minutes % 60, 'minute')}` : unit(hours, 'hour')
+}

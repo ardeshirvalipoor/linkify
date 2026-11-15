@@ -1,5 +1,5 @@
-// A big target that accepts a file, either by clicking it or by dropping one on
-// it. It emits a `file` event and knows nothing at all about uploading, which is
+// A big target that accepts files, either by clicking it or by dropping them on
+// it. It emits a `files` event and knows nothing at all about uploading, which is
 // why it can be dropped into any page.
 
 import { Base, Div, Input, Span } from '@codesuma/baseline'
@@ -13,6 +13,7 @@ export const DropZone = (titleText: string, hintText: string) => {
 
     const input = Input('', 'file')
     input.addClass('hidden')
+    input.el.multiple = true
 
     const icon = Div('+')
     icon.addClass(styles.icon)
@@ -34,10 +35,10 @@ export const DropZone = (titleText: string, hintText: string) => {
 
     input.on('change', () => {
         if (disabled) return
-        const file = input.el.files?.[0]
-        if (!file) return
+        const files = Array.from(input.el.files ?? [])
+        if (!files.length) return
 
-        base.emit('file', file)
+        base.emit('files', files)
 
         // Without this, picking the same file twice in a row is silent: the
         // browser only fires `change` when the value actually changes.
@@ -59,8 +60,8 @@ export const DropZone = (titleText: string, hintText: string) => {
         base.removeClass(styles.hot)
         if (disabled) return
 
-        const file = event.dataTransfer?.files[0]
-        if (file) base.emit('file', file)
+        const files = Array.from(event.dataTransfer?.files ?? [])
+        if (files.length) base.emit('files', files)
     })
 
     base.append(input, icon, title, hint)

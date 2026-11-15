@@ -108,7 +108,7 @@ export async function finish(token: string, expiresIn: LinkExpiry, password?: st
     const expiresAt = shareLinkExpiresAt(expiresIn)
     await db.markFileReady(upload.id, passwordHash, new Date(expiresAt * 1000), hashRevocationToken(revocationToken))
 
-    return { id: upload.id, url: createShareLink(upload.id, expiresIn, expiresAt), revocationToken }
+    return { id: upload.id, url: createShareLink(upload.id, expiresAt), revocationToken }
 }
 
 // Give up on an upload and let the storage throw away the parts it collected.

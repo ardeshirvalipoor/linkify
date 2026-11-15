@@ -7,9 +7,11 @@
 import { Base, Button, Div, H1, Input, P, Page, IRouteEvent } from '@codesuma/baseline'
 import { fileInfo } from '../../lib/api'
 import { fileSize } from '../../lib/format'
-import { createPreferencesBar, languageLocale, t } from '../../lib/preferences'
+import { languageLocale, t } from '../../lib/i18n'
+import { createPreferencesBar } from '../../lib/preferences'
 import { createSiteNavigation } from '../../lib/site-navigation'
 import { show } from '../../lib/show'
+import { CollectionList } from './collection-list'
 
 export const DownloadPage = () => {
     const page = Page()
@@ -44,6 +46,10 @@ export const DownloadPage = () => {
     previewMedia.addClass('download-preview-media')
     previewWrap.append(previewMedia)
 
+    // A link that holds several files lists them instead of showing a preview.
+    const collectionFiles = CollectionList()
+    show(collectionFiles, false)
+
     const passwordWrap = Div()
     passwordWrap.el.style.display = 'none'
     passwordWrap.el.style.margin = '12px 0'
@@ -77,7 +83,7 @@ export const DownloadPage = () => {
     const error = P('')
     error.addClass('error')
 
-    card.append(heading, meta, previewWrap, passwordWrap, actions, error)
+    card.append(heading, meta, previewWrap, collectionFiles, passwordWrap, actions, error)
     page.append(siteNavigation, preferencesBar, card)
 
     let downloadPath = ''
@@ -136,6 +142,8 @@ export const DownloadPage = () => {
         show(error, false)
         show(passwordWrap, false)
         show(passwordError, false)
+        show(collectionFiles, false)
+        collectionFiles.clear()
         heading.text(t('loading'))
         meta.text('')
         resetPreview()
@@ -152,9 +160,19 @@ export const DownloadPage = () => {
 
             // Hide password controls after the supplied password has been accepted.
             show(passwordWrap, false)
-            heading.text(file.fileName)
             const expiresAt = Number(new URLSearchParams(window.location.search).get('expires'))
             const expiryDate = new Date(expiresAt * 1000).toLocaleString(languageLocale())
+
+            if ('files' in file) {
+                heading.text(t('chooseFile'))
+                const totalSize = file.files.reduce((total, item) => total + item.size, 0)
+                meta.text(`${fileSize(totalSize)} · ${t('linkExpiresAt', { date: expiryDate })}`)
+                collectionFiles.render(file.id, file.files, password)
+                show(collectionFiles, true)
+                return
+            }
+
+            heading.text(file.fileName)
             meta.text(`${fileSize(file.size)} · ${t('linkExpiresAt', { date: expiryDate })}`)
 
             const query = new URLSearchParams(window.location.search)

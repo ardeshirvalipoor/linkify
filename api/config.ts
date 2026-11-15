@@ -37,6 +37,10 @@ export const config = {
 // One gigabyte, the largest file we accept.
 export const MAX_FILE_SIZE = 1024 * 1024 * 1024
 
+// The most files one share link can hold. The browser refuses a longer queue
+// before it sends anything, so a long upload never fails at the very end.
+export const MAX_FILES_PER_LINK = 100
+
 // The size of one part of a multipart upload.
 //
 // The storage rejects parts smaller than 5 MiB, except for the very last one.

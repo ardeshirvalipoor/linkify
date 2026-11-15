@@ -703,24 +703,20 @@
   const themeButton = document.createElement("button");
   themeButton.type = "button";
   themeButton.className = "theme-toggle";
+
+  // theme.js set the starting theme before the first paint. This only switches it.
   themeButton.addEventListener("click", () => {
     const theme = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
-    applyTheme(theme, true);
+    document.documentElement.dataset.theme = theme;
+    try {
+      localStorage.setItem("linkify-theme", theme);
+    } catch {
+      // The current page still changes theme when browser storage is unavailable.
+    }
     updateThemeButton(language);
   });
   const controls = document.querySelector(".static-language-control");
   if (controls) controls.insertBefore(themeButton, controls.firstChild);
-
-  function applyTheme(theme, persist) {
-    document.documentElement.dataset.theme = theme;
-    if (persist) {
-      try {
-        localStorage.setItem("linkify-theme", theme);
-      } catch {
-        // The current page still changes theme when browser storage is unavailable.
-      }
-    }
-  }
 
   function updateThemeButton(locale) {
     const dark = document.documentElement.dataset.theme === "dark";
@@ -740,11 +736,6 @@
 
   document.documentElement.lang = language;
   document.documentElement.dir = language === "ar" ? "rtl" : "ltr";
-  try {
-    applyTheme(localStorage.getItem("linkify-theme") === "dark" ? "dark" : "light", false);
-  } catch {
-    applyTheme("light", false);
-  }
   const selector = document.getElementById("language-select");
   if (selector) selector.value = language;
   updateThemeButton(language);

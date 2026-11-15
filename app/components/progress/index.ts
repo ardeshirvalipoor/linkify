@@ -2,7 +2,8 @@
 // percentage, the sizes and the speed.
 
 import { Div, Span } from '@codesuma/baseline'
-import { fileSize, percentage, transferRate } from '../../lib/format'
+import { duration, fileSize, percentage, transferRate } from '../../lib/format'
+import { languageLocale, t } from '../../lib/i18n'
 import styles from './index.module.css'
 
 export const Progress = () => {
@@ -22,9 +23,12 @@ export const Progress = () => {
     const rate = Span('')
     rate.addClass(styles.rate)
 
+    const eta = Span('')
+    eta.addClass(styles.eta)
+
     const numbers = Div()
     numbers.addClass(styles.numbers)
-    numbers.append(done, rate)
+    numbers.append(done, eta, rate)
 
     base.append(track, numbers)
 
@@ -42,10 +46,18 @@ export const Progress = () => {
             }
 
             const percent = percentage(uploadedBytes, totalBytes)
+            const elapsed = Date.now() - startedAt
+            const sentBytes = uploadedBytes - startedBytes
+
+            // The time left at the average speed so far, once there is a second of
+            // it to go on. Like the speed, it shows nothing before that.
+            const bytesPerSecond = elapsed >= 1000 ? sentBytes / (elapsed / 1000) : 0
+            const secondsLeft = bytesPerSecond > 0 ? (totalBytes - uploadedBytes) / bytesPerSecond : 0
 
             fill.style({ width: `${percent}%` })
             done.text(`${percent}% · ${fileSize(uploadedBytes)} of ${fileSize(totalBytes)}`)
-            rate.text(transferRate(uploadedBytes - startedBytes, Date.now() - startedAt))
+            rate.text(transferRate(sentBytes, elapsed))
+            eta.text(secondsLeft > 0 ? t('timeLeft', { time: duration(secondsLeft, languageLocale()) }) : '')
         },
 
         // Called before a new upload so the next one measures its own speed.
@@ -54,6 +66,7 @@ export const Progress = () => {
             fill.style({ width: '0%' })
             done.text('0%')
             rate.text('')
+            eta.text('')
         },
 
         prepareResume() {

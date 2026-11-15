@@ -1,7 +1,8 @@
 # File sharing
 
-Upload a file up to 1 GB, get a link, share it. Resume an interrupted upload for
-up to 7 days by reopening the same browser profile and choosing the same file.
+Upload up to 100 files of up to 1 GB each, get one link, share it. Resume an
+interrupted upload for up to 7 days by reopening the same browser profile and
+choosing the same file.
 
 The service runs on Fly.io. The files live in Cloudflare R2. What the service
 knows about those files lives in a Supabase Postgres database. The file bytes
@@ -140,6 +141,8 @@ the link from that browser.
 Links created before this feature was deployed do not have a revocation
 credential and cannot be revoked through the uploader page.
 
+Revoking a link that holds several files also revokes every file in it.
+
 Direct storage download URLs issued before revocation are short-lived and can
 remain usable for up to five minutes. Revocation disables the share link
 immediately and moves the expiry to the current moment so the next cleanup run
@@ -165,6 +168,22 @@ machine which parts R2 already holds. The answer comes back: parts 1 to 40.
 
 Nothing was lost. Those 40 parts are still sitting in the bucket, so the second
 attempt sends 88 parts rather than 128.
+
+### Sending several files
+
+Choose or drop up to 100 files at once. They go up one after another, each as
+its own resumable upload. Pause stops the queue, and Resume carries on from the
+parts already stored.
+
+No file is finished until every file in the queue has been sent. Finishing is
+what starts a link's lifetime, so a long queue, or a pause in the middle of one,
+does not use up the time the link was given.
+
+When two or more files have finished, the server joins them under one link, a
+collection. The collection lasts as long as its newest file, and the server keeps
+the older files until then. Each file's own link still expires on its own
+schedule, because that expiry is signed into it. The files must share one
+password, because the link has only one.
 
 The full walkthrough, with the reasoning behind every choice, is in
 [docs/how-it-works.md](docs/how-it-works.md).
@@ -240,13 +259,15 @@ That reads `supabase/migrations` and creates the schema. Run the same command
 when upgrading an existing deployment so new migrations, including the
 revocation columns, are applied before deploying the updated server.
 
-| Table       | One row for                            |
-| ----------- | -------------------------------------- |
-| `files`     | Every upload that has been started     |
-| `downloads` | Every download that has happened       |
-| `profiles`  | Every account, once there are accounts |
+| Table                    | One row for                            |
+| ------------------------ | -------------------------------------- |
+| `files`                  | Every upload that has been started     |
+| `downloads`              | Every download that has happened       |
+| `profiles`               | Every account, once there are accounts |
+| `share_collections`      | Every link that holds several files    |
+| `share_collection_files` | Every file in such a link              |
 
-All three have row level security turned on and no policies written. Supabase
+Every table has row level security turned on and no policies written. Supabase
 publishes every table through a REST API that its public key can reach, and this
 shuts that door completely, so the API can see nothing at all. Our server
 connects as the database owner, and those rules do not apply to it.
@@ -303,7 +324,7 @@ your machine and fail in production.
 | `supabase`        | The database schema, one migration file per change       |
 | `app/pages`       | One folder per screen                                    |
 | `app/components`  | Pieces reused by more than one screen                    |
-| `app/lib`         | The upload engine, the API calls, small helpers          |
+| `app/lib`         | The upload engine and queue, the API calls, translations |
 | `public`          | The HTML shell, plus the bundle the build writes into it |
 
 The server is CommonJS TypeScript, the same as the `api` folder in papalist. The
@@ -322,9 +343,9 @@ user interface.
 
 ## Limits and what is missing
 
-- One file per upload, up to 1 GB.
+- Up to 100 files per upload, each up to 1 GB. Two or more files share one link.
 - A signed share link expires one hour, one day, or one week after upload
-  completion. Link access stops at that deadline; storage deletion is performed
+  completion. For several files, that is when the last of them finishes. Link access stops at that deadline; storage deletion is performed
   by the cleanup job, which runs while the Fly machine is awake. If Fly has
   stopped the machine, deletion waits until it starts again. A previously issued
   direct storage URL may remain usable for up to five minutes.

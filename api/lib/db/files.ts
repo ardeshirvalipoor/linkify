@@ -1,30 +1,6 @@
-// The only file in the project that talks to Postgres.
-//
-// The database is hosted by Supabase, which is ordinary Postgres with a REST API
-// and an accounts system built around it. We use none of that from here. This is
-// a plain connection and hand-written SQL, in the same spirit as
-// api/lib/storage.ts: the rest of the app calls the functions at the bottom and
-// never sees a query.
-//
-// The database holds no file bytes and no upload state. R2 still holds the
-// bytes, and the signed upload token still carries an upload in progress. These
-// tables are the index: which files exist, and who has downloaded them.
+// One row per file, and one row per download of it.
 
-import postgres from 'postgres'
-import { config } from '../config'
-
-const sql = postgres(config.databaseUrl, {
-    // Supabase's pooler gives each query whichever connection is free, so a
-    // statement prepared on one connection is not there on the next one. Turning
-    // prepared statements off is what the pooler asks of every client.
-    prepare: false,
-
-    // Our machine handles small messages and nothing else, so a handful of
-    // connections is plenty, and letting them go quickly suits a Fly machine
-    // that stops when nobody is using it.
-    max: 5,
-    idle_timeout: 30
-})
+import { sql } from './client'
 
 export interface NewFile {
     fileName: string

@@ -1,7 +1,8 @@
 // Shown for any address that is not the upload page and not a share link.
 
 import { Button, Div, H1, P, Page, router } from '@codesuma/baseline'
-import { createPreferencesBar, t } from '../../lib/preferences'
+import { t } from '../../lib/i18n'
+import { createPreferencesBar } from '../../lib/preferences'
 import { createSiteNavigation } from '../../lib/site-navigation'
 
 export const MissingPage = () => {
