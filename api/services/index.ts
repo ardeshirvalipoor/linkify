@@ -6,8 +6,10 @@
 
 import * as uploads from './uploads'
 import * as files from './files'
+import * as collections from './collections'
 
 export default {
     uploads,
-    files
+    files,
+    collections
 }
