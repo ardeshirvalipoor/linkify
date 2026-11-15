@@ -6,11 +6,12 @@
 
 import { Base, Button, Div, H1, Input, P, Page, IRouteEvent } from '@codesuma/baseline'
 import { fileInfo } from '../../lib/api'
-import { collectionFileDownloadUrl } from '../../lib/api'
 import { fileSize } from '../../lib/format'
-import { createPreferencesBar, languageLocale, t } from '../../lib/preferences'
+import { languageLocale, t } from '../../lib/i18n'
+import { createPreferencesBar } from '../../lib/preferences'
 import { createSiteNavigation } from '../../lib/site-navigation'
 import { show } from '../../lib/show'
+import { CollectionList } from './collection-list'
 
 export const DownloadPage = () => {
     const page = Page()
@@ -45,8 +46,8 @@ export const DownloadPage = () => {
     previewMedia.addClass('download-preview-media')
     previewWrap.append(previewMedia)
 
-    const collectionFiles = Div()
-    collectionFiles.addClass('collection-files')
+    // A link that holds several files lists them instead of showing a preview.
+    const collectionFiles = CollectionList()
     show(collectionFiles, false)
 
     const passwordWrap = Div()
@@ -142,7 +143,7 @@ export const DownloadPage = () => {
         show(passwordWrap, false)
         show(passwordError, false)
         show(collectionFiles, false)
-        collectionFiles.el.replaceChildren()
+        collectionFiles.clear()
         heading.text(t('loading'))
         meta.text('')
         resetPreview()
@@ -164,26 +165,9 @@ export const DownloadPage = () => {
 
             if ('files' in file) {
                 heading.text(t('chooseFile'))
-                meta.text(`${file.files.length} files · ${t('linkExpiresAt', { date: expiryDate })}`)
-                const shareUrl = new URL(window.location.href)
-                for (const item of file.files) {
-                    const row = Div()
-                    row.addClass('collection-file')
-                    const details = Div()
-                    details.addClass('collection-file-details')
-                    const name = Base('strong')
-                    name.text(item.fileName)
-                    const size = P(fileSize(item.size))
-                    size.addClass('collection-file-size')
-                    details.append(name, size)
-                    const itemDownloadButton = Button(t('download'))
-                    itemDownloadButton.addClass('button', 'primary')
-                    itemDownloadButton.on('click', () => {
-                        window.location.href = collectionFileDownloadUrl(id, item.id, shareUrl, password)
-                    })
-                    row.append(details, itemDownloadButton)
-                    collectionFiles.append(row)
-                }
+                const totalSize = file.files.reduce((total, item) => total + item.size, 0)
+                meta.text(`${fileSize(totalSize)} · ${t('linkExpiresAt', { date: expiryDate })}`)
+                collectionFiles.render(file.id, file.files, password)
                 show(collectionFiles, true)
                 return
             }

@@ -45,6 +45,6 @@
 
     .eta {
         min-width: 0;
-        margin-left: auto;
+        margin-inline-start: auto;
     }
 }

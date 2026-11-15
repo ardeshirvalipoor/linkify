@@ -21,6 +21,14 @@ export interface UploadedPart {
     size: number
 }
 
+// A share link, and the token that lets its uploader revoke it. Finishing one
+// file returns one, and so does joining several files into one link.
+export interface ShareLink {
+    id: string
+    url: string
+    revocationToken: string
+}
+
 export class ApiError extends Error {
     constructor(public readonly status: number, message: string) {
         super(message)
@@ -38,13 +46,14 @@ export interface FileInfo {
     protected: boolean
 }
 
-export interface FileCollectionInfo {
+// A link that holds several files. The server checks its password once for all.
+export interface CollectionInfo {
     id: string
     files: FileInfo[]
     protected: boolean
 }
 
-export type ShareInfo = FileInfo | FileCollectionInfo
+export type ShareInfo = FileInfo | CollectionInfo
 
 export async function startUpload(file: File): Promise<StartedUpload> {
     return unwrap<StartedUpload>(await http.post('/api/uploads', {
@@ -66,7 +75,7 @@ export async function partUrl(token: string, partNumber: number): Promise<string
 }
 
 // Completion carries the latest password choice, including when reusing a saved token.
-export async function finishUpload(token: string, expiresIn: LinkExpiry, password?: string): Promise<{ id: string; url: string; revocationToken: string }> {
+export async function finishUpload(token: string, expiresIn: LinkExpiry, password?: string): Promise<ShareLink> {
     return unwrap(await http.post(`/api/uploads/${token}/complete`, { expiresIn, password }))
 }
 
@@ -74,7 +83,9 @@ export async function revokeShareLink(id: string, revocationToken: string): Prom
     unwrap(await http.post(`/api/files/${id}/revoke`, { revocationToken }))
 }
 
-export async function createShareCollection(files: { id: string; revocationToken: string }[]): Promise<{ id: string; url: string; revocationToken: string }> {
+// Joins finished files into one link. Each file's own revocation token proves
+// that this browser uploaded it.
+export async function createShareCollection(files: { id: string; revocationToken: string }[]): Promise<ShareLink> {
     return unwrap(await http.post('/api/files/collections', { files }))
 }
 
@@ -87,9 +98,10 @@ export async function fileInfo(id: string, password?: string, shareUrl?: URL): P
     // Passwords must be entered in the viewer, never inherited from a copied URL.
     query.delete('password')
     if (password) query.set('password', password)
-    return unwrap<FileInfo>(await http.get(`/api/files/${id}?${query.toString()}`))
+    return unwrap<ShareInfo>(await http.get(`/api/files/${id}?${query.toString()}`))
 }
 
+// The counted download of one file in a link that holds several.
 export function collectionFileDownloadUrl(collectionId: string, fileId: string, shareUrl: URL, password?: string): string {
     const query = new URLSearchParams(shareUrl.search)
     query.delete('password')

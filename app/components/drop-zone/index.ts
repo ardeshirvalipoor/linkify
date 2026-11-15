@@ -1,5 +1,5 @@
-// A big target that accepts a file, either by clicking it or by dropping one on
-// it. It emits a `file` event and knows nothing at all about uploading, which is
+// A big target that accepts files, either by clicking it or by dropping them on
+// it. It emits a `files` event and knows nothing at all about uploading, which is
 // why it can be dropped into any page.
 
 import { Base, Div, Input, Span } from '@codesuma/baseline'

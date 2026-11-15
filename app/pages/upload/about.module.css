@@ -1,0 +1,42 @@
+/* Keep the site description visually secondary to the upload workflow and benefits. */
+.wrap {
+    width: 100%;
+    max-width: 760px;
+    margin-top: 26px;
+    padding-top: 18px;
+    border-top: 1px solid var(--line);
+}
+
+.title {
+    margin: 0 0 8px;
+    color: var(--ink);
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.description {
+    max-width: 600px;
+    margin: 0;
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.7;
+}
+
+.links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 18px;
+    margin-top: 12px;
+}
+
+.links a {
+    color: var(--ink);
+    font-size: 13px;
+    font-weight: 700;
+    text-underline-offset: 3px;
+}
+
+.links a:focus-visible {
+    outline: 3px solid var(--accent);
+    outline-offset: 3px;
+}

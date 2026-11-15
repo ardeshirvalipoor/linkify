@@ -9,7 +9,7 @@
         "dev:app": "npm run build:app -- --watch",
         "build": "npm run build:api && npm run build:app",
         "build:api": "tsc -p tsconfig.json",
-        "build:app": "esbuild app/index.ts --bundle --outfile=public/bundle.js --format=esm --target=es2020 --sourcemap",
+        "build:app": "esbuild app/index.ts --bundle --outfile=public/bundle.js --format=esm --target=es2020 --sourcemap \"--external:/*.svg\"",
         "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p app/tsconfig.json",
         "start": "node dist/server.js"
     },

@@ -1,0 +1,19 @@
+.title {
+    width: 100%;
+    text-align: start;
+}
+
+.message {
+    margin: 0;
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.6;
+    text-align: start;
+}
+
+.actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    width: 100%;
+}

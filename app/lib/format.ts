@@ -29,15 +29,14 @@ export function transferRate(bytes: number, milliseconds: number): string {
     return `${fileSize(bytes / (milliseconds / 1000))}/s`
 }
 
-export function remainingTime(bytesLeft: number, bytesPerSecond: number): string {
-    if (bytesLeft <= 0) return 'Almost done'
-    if (bytesPerSecond <= 0) return 'Calculating time'
+// "5 min" or "1 hr 5 min", rounded up, with the units in the reader's language.
+export function duration(seconds: number, locale: string): string {
+    const unit = (value: number, name: 'second' | 'minute' | 'hour') =>
+        new Intl.NumberFormat(locale, { style: 'unit', unit: name, unitDisplay: 'short' }).format(value)
 
-    const seconds = Math.ceil(bytesLeft / bytesPerSecond)
-    if (seconds < 60) return `About ${seconds}s left`
+    if (seconds < 60) return unit(Math.ceil(seconds), 'second')
     const minutes = Math.ceil(seconds / 60)
-    if (minutes < 60) return `About ${minutes}m left`
+    if (minutes < 60) return unit(minutes, 'minute')
     const hours = Math.floor(minutes / 60)
-    const remainingMinutes = minutes % 60
-    return remainingMinutes ? `About ${hours}h ${remainingMinutes}m left` : `About ${hours}h left`
+    return minutes % 60 ? `${unit(hours, 'hour')} ${unit(minutes % 60, 'minute')}` : unit(hours, 'hour')
 }

@@ -6,8 +6,10 @@
 //   3. Send only the parts that are missing, a few at a time.
 //   4. Ask the server to glue them together.
 //
-// Nothing here touches the screen. The page passes in two callbacks and decides
-// for itself what to draw.
+// sendFile() does the first three steps and finishFile() the last. They are apart
+// because finishing starts the link's lifetime, so a queue sends every file
+// before it finishes any. Nothing here touches the screen. The page passes in
+// callbacks and decides for itself what to draw.
 
 import { waitFor } from '@codesuma/baseline'
 import * as api from './api'
@@ -28,12 +30,15 @@ export interface UploadReport {
 export interface UploadOptions {
     onStatus(message: string): void
     onProgress(report: UploadReport): void
+    // Aborting this pauses the upload. The parts already stored stay, so sending
+    // the same file again carries on from them.
     signal?: AbortSignal
 }
 
-// The password is passed only at completion, so a resumed upload uses the
-// current value rather than a value captured when its token was first created.
-export async function uploadFile(file: File, options: UploadOptions, expiresIn: api.LinkExpiry, password?: string): Promise<{ id: string; url: string; revocationToken: string }> {
+// Sends every part the storage does not have yet, and returns the upload's token.
+// The note in the browser stays until finishFile(), so a file whose parts are all
+// sent can still be finished after the tab was closed.
+export async function sendFile(file: File, options: UploadOptions): Promise<string> {
     const id = fingerprint(file)
     const upload = await openUpload(file, id, options)
 
@@ -71,9 +76,16 @@ export async function uploadFile(file: File, options: UploadOptions, expiresIn: 
         report()
     })
 
-    throwIfAborted(options.signal)
-    options.onStatus('Putting the parts together')
-    const finished = await api.finishUpload(upload.token, expiresIn, password).catch(async (problem: unknown) => {
+    return upload.token
+}
+
+// Glues the parts into one file and returns its link, whose lifetime starts now.
+// The password is passed only here, so a resumed upload uses the current value
+// rather than a value captured when its token was first created.
+export async function finishFile(file: File, token: string, onStatus: (message: string) => void, expiresIn: api.LinkExpiry, password?: string): Promise<api.ShareLink> {
+    const id = fingerprint(file)
+    onStatus('Putting the parts together')
+    const finished = await api.finishUpload(token, expiresIn, password).catch(async (problem: unknown) => {
         // The storage no longer has this upload, so the note can never be resumed.
         if (problem instanceof api.ApiError && problem.status === 410) await forget(id)
         throw problem

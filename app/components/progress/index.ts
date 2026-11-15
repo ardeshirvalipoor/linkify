@@ -2,7 +2,8 @@
 // percentage, the sizes and the speed.
 
 import { Div, Span } from '@codesuma/baseline'
-import { fileSize, percentage, remainingTime, transferRate } from '../../lib/format'
+import { duration, fileSize, percentage, transferRate } from '../../lib/format'
+import { languageLocale, t } from '../../lib/i18n'
 import styles from './index.module.css'
 
 export const Progress = () => {
@@ -36,7 +37,6 @@ export const Progress = () => {
     // would show a number nobody's connection ever reached.
     let startedBytes: number | null = null
     let startedAt = 0
-    let latestBytes = 0
 
     return Object.assign(base, {
         update(uploadedBytes: number, totalBytes: number) {
@@ -44,16 +44,20 @@ export const Progress = () => {
                 startedBytes = uploadedBytes
                 startedAt = Date.now()
             }
-            latestBytes = uploadedBytes
 
             const percent = percentage(uploadedBytes, totalBytes)
             const elapsed = Date.now() - startedAt
-            const bytesPerSecond = elapsed > 0 ? (uploadedBytes - startedBytes!) / (elapsed / 1000) : 0
+            const sentBytes = uploadedBytes - startedBytes
+
+            // The time left at the average speed so far, once there is a second of
+            // it to go on. Like the speed, it shows nothing before that.
+            const bytesPerSecond = elapsed >= 1000 ? sentBytes / (elapsed / 1000) : 0
+            const secondsLeft = bytesPerSecond > 0 ? (totalBytes - uploadedBytes) / bytesPerSecond : 0
 
             fill.style({ width: `${percent}%` })
             done.text(`${percent}% · ${fileSize(uploadedBytes)} of ${fileSize(totalBytes)}`)
-            rate.text(transferRate(uploadedBytes - startedBytes!, elapsed))
-            eta.text(remainingTime(totalBytes - latestBytes, bytesPerSecond))
+            rate.text(transferRate(sentBytes, elapsed))
+            eta.text(secondsLeft > 0 ? t('timeLeft', { time: duration(secondsLeft, languageLocale()) }) : '')
         },
 
         // Called before a new upload so the next one measures its own speed.

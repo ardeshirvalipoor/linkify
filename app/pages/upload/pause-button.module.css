@@ -1,0 +1,13 @@
+/* Both labels sit in the same grid cell. The hidden one still takes up its room,
+   so the button is always as wide as its longer label and never moves. */
+.button {
+    display: inline-grid;
+}
+
+.button > span {
+    grid-area: 1 / 1;
+}
+
+.unseen {
+    visibility: hidden;
+}

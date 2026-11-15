@@ -32,5 +32,6 @@ ready().then(() => {
         '/f/:id': DownloadPage,
         '*': MissingPage
     }, view)
-       document.getElementById('app-loading')?.remove()
+    // The first page is drawn by now, so the placeholder in index.html can go.
+    document.getElementById('app-loading')?.remove()
 })

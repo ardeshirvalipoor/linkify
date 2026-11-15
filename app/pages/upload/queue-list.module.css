@@ -1,0 +1,82 @@
+.panel {
+    display: grid;
+    gap: 10px;
+    padding: 14px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--field-soft);
+}
+
+.title {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.list {
+    display: grid;
+    gap: 8px;
+    max-height: 260px;
+    margin: 0;
+    padding: 0;
+    overflow-y: auto;
+    list-style: none;
+}
+
+.item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--surface);
+}
+
+.file {
+    display: grid;
+    flex: 1;
+    min-width: 0;
+    gap: 3px;
+}
+
+.name {
+    overflow: hidden;
+    font-size: 13px;
+    font-weight: 650;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.size,
+.state {
+    color: var(--muted);
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+}
+
+.state {
+    flex: 0 0 auto;
+    padding: 5px 8px;
+    border-radius: 999px;
+    background: var(--bg);
+}
+
+/* One colour per status. The colours themselves are theme tokens in global.css. */
+.queued { color: var(--muted); }
+.uploading { color: var(--chip-uploading-ink); background: var(--chip-uploading); }
+.paused { color: var(--chip-paused-ink); background: var(--chip-paused); }
+.complete { color: var(--chip-complete-ink); background: var(--chip-complete); }
+.failed { color: var(--danger); background: var(--error-surface); }
+
+@media (max-width: 520px) {
+    .item {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .file {
+        flex-basis: calc(100% - 100px);
+    }
+}
