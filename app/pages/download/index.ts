@@ -12,6 +12,8 @@ import { createPreferencesBar } from '../../lib/preferences'
 import { createSiteNavigation } from '../../lib/site-navigation'
 import { show } from '../../lib/show'
 import { CollectionList } from './collection-list'
+import { DropZone } from '../../components/drop-zone'
+import { finishFile, sendFile } from '../../lib/upload'
 
 export const DownloadPage = () => {
     const page = Page()
@@ -73,6 +75,16 @@ export const DownloadPage = () => {
     passwordError.el.style.flexBasis = '100%'
     passwordWrap.append(passwordError)
 
+    const liveAddWrap = Div()
+    liveAddWrap.addClass('live-exchange-add')
+    show(liveAddWrap, false)
+    const liveAddTitle = Base('strong')
+    liveAddTitle.text('Add to this live exchange')
+    const liveAddZone = DropZone('Choose files to add', 'Upload files to share in this same link')
+    const liveAddStatus = P('')
+    liveAddStatus.addClass('note')
+    liveAddWrap.append(liveAddTitle, liveAddZone, liveAddStatus)
+
     const downloadButton = Button(t('download'))
     downloadButton.addClass('button', 'primary')
 
@@ -83,12 +95,14 @@ export const DownloadPage = () => {
     const error = P('')
     error.addClass('error')
 
-    card.append(heading, meta, previewWrap, collectionFiles, passwordWrap, actions, error)
+    card.append(heading, meta, previewWrap, collectionFiles, passwordWrap, liveAddWrap, actions, error)
     page.append(siteNavigation, preferencesBar, card)
 
     let downloadPath = ''
     let currentId = ''
     let previewUrl: string | null = null
+    let unlockedPassword: string | undefined
+    let liveExchangeId: string | null = null
 
     function resetPreview() {
         if (previewUrl) {
@@ -143,6 +157,7 @@ export const DownloadPage = () => {
         show(passwordWrap, false)
         show(passwordError, false)
         show(collectionFiles, false)
+        show(liveAddWrap, false)
         collectionFiles.clear()
         heading.text(t('loading'))
         meta.text('')
@@ -160,20 +175,24 @@ export const DownloadPage = () => {
 
             // Hide password controls after the supplied password has been accepted.
             show(passwordWrap, false)
+            if (password) unlockedPassword = password
             const expiresAt = Number(new URLSearchParams(window.location.search).get('expires'))
             const expiryDate = new Date(expiresAt * 1000).toLocaleString(languageLocale())
 
             if ('files' in file) {
                 heading.text(t('chooseFile'))
-                const totalSize = file.files.reduce((total, item) => total + item.size, 0)
-                meta.text(`${fileSize(totalSize)} · ${t('linkExpiresAt', { date: expiryDate })}`)
-                collectionFiles.render(file.id, file.files, password)
+           const totalSize = file.files.reduce((total, item) => total + item.size, 0)
+            meta.text(`${fileSize(totalSize)} · ${t('linkExpiresAt', { date: expiryDate })}`)
+            liveExchangeId = file.live ? file.id : null
+            show(liveAddWrap, file.live)
+            collectionFiles.render(file.id, file.files, password)
                 show(collectionFiles, true)
                 return
             }
 
             heading.text(file.fileName)
             meta.text(`${fileSize(file.size)} · ${t('linkExpiresAt', { date: expiryDate })}`)
+            liveExchangeId = null
 
             const query = new URLSearchParams(window.location.search)
             if (password) query.set('password', password)
@@ -206,6 +225,10 @@ export const DownloadPage = () => {
     page.on('enter', async ({ params }: IRouteEvent) => {
         // Every viewer, including the uploader's own Open action, must unlock protected files.
         await loadFile(params.id)
+        const pollingId = params.id
+        window.setInterval(() => {
+            if (liveExchangeId === pollingId) void loadFile(pollingId, unlockedPassword)
+        }, 5 * 60 * 1000)
     })
 
     unlockButton.on('click', async () => {
@@ -216,6 +239,7 @@ export const DownloadPage = () => {
             return
         }
         show(passwordError, false)
+        unlockedPassword = password
         await loadFile(currentId || (new URL(location.href).pathname.split('/').pop() ?? ''), password)
     })
 
@@ -224,6 +248,42 @@ export const DownloadPage = () => {
         // the browser follows it to the storage, and the download bar appears
         // like it would for any other link.
         window.location.href = downloadPath
+    })
+
+    liveAddZone.on('files', (files: File[]) => {
+        if (!liveExchangeId) return
+        const params = new URLSearchParams(window.location.search)
+        const expires = params.get('expires')
+        const signature = params.get('signature')
+        if (!expires || !signature) {
+            liveAddStatus.text('This live exchange link is incomplete')
+            return
+        }
+
+        void (async () => {
+            liveAddZone.setDisabled(true)
+            for (const file of files) {
+                liveAddStatus.text(`Adding ${file.name}...`)
+                try {
+                        const options = {
+                        onStatus: (message: string) => liveAddStatus.text(message),
+                        onProgress: () => undefined
+                    }
+                    const token = await sendFile(file, options)
+                    await finishFile(file, token, options.onStatus, '1h', unlockedPassword, {
+                        id: liveExchangeId,
+                        expires,
+                        signature
+                    })
+                } catch (problem) {
+                    liveAddStatus.text(problem instanceof Error ? problem.message : 'The file could not be added')
+                    continue
+                }
+            }
+            liveAddStatus.text('Live exchange updated')
+            liveAddZone.setDisabled(false)
+            await loadFile(liveExchangeId, unlockedPassword)
+        })()
     })
 
     return page

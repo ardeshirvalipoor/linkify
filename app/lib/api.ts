@@ -51,6 +51,7 @@ export interface CollectionInfo {
     id: string
     files: FileInfo[]
     protected: boolean
+    live: boolean
 }
 
 export type ShareInfo = FileInfo | CollectionInfo
@@ -75,8 +76,19 @@ export async function partUrl(token: string, partNumber: number): Promise<string
 }
 
 // Completion carries the latest password choice, including when reusing a saved token.
-export async function finishUpload(token: string, expiresIn: LinkExpiry, password?: string): Promise<ShareLink> {
-    return unwrap(await http.post(`/api/uploads/${token}/complete`, { expiresIn, password }))
+export async function finishUpload(
+    token: string,
+    expiresIn: LinkExpiry,
+    password?: string,
+    liveExchange?: { id: string; expires: string; signature: string }
+): Promise<{ id: string; url: string; revocationToken: string }> {
+    return unwrap(await http.post(`/api/uploads/${token}/complete`, {
+        expiresIn,
+        password,
+        collectionId: liveExchange?.id,
+        expires: liveExchange?.expires,
+        signature: liveExchange?.signature
+    }))
 }
 
 export async function revokeShareLink(id: string, revocationToken: string): Promise<void> {

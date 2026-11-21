@@ -11,7 +11,7 @@ const createSchema = z.object({
     files: z.array(z.object({
         id: z.string().regex(/^[A-Za-z0-9_-]{16}$/),
         revocationToken: z.string().regex(/^[A-Za-z0-9_-]{43}$/)
-    })).min(2).max(MAX_FILES_PER_LINK)
+    })).min(1).max(MAX_FILES_PER_LINK)
 })
 
 // POST /api/files/collections

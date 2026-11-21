@@ -202,8 +202,10 @@ export const UploadPage = () => {
 
             const ownerPassword = consumeUploaderPassword(id) ?? ''
             const file = await api.fileInfo(id, ownerPassword || undefined, shareUrl)
-            // Only a single file has a preview page to come back from.
-            if ('files' in file) throw new Error(t('linkDidNotWork'))
+            if ('files' in file) {
+                window.location.replace(shareUrl.toString())
+                return
+            }
             fileName.text(file.fileName)
             fileMeta.text(fileSize(file.size))
             expirySummary.text(t('linkExpiresAt', {

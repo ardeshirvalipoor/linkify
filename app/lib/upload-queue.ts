@@ -112,7 +112,7 @@ export function createUploadQueue() {
             }
 
             const finished = items.flatMap(item => item.link ? [item.link] : [])
-            if (finished.length < 2) return { paused: false, link: finished[0], error }
+            if (finished.length < 1) return { paused: false, link: finished[0], error }
             const link = await api.createShareCollection(finished.map(({ id, revocationToken }) => ({ id, revocationToken })))
             return { paused: false, link, error }
         } catch (problem) {

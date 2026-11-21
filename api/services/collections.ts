@@ -27,8 +27,8 @@ export interface CollectionMember {
 
 export async function create(members: CollectionMember[]): Promise<{ id: string; url: string; revocationToken: string }> {
     const ids = members.map(member => member.id)
-    if (ids.length < 2 || ids.length > MAX_FILES_PER_LINK || new Set(ids).size !== ids.length) {
-        throw new HttpError(400, `A share link holds from 2 to ${MAX_FILES_PER_LINK} different files`)
+    if (ids.length < 1 || ids.length > MAX_FILES_PER_LINK || new Set(ids).size !== ids.length) {
+        throw new HttpError(400, `A share link holds from 1 to ${MAX_FILES_PER_LINK} different files`)
     }
 
     const id = newFileId()

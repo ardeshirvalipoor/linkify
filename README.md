@@ -1,8 +1,9 @@
 # File sharing
 
-Upload up to 100 files of up to 1 GB each, get one link, share it. Resume an
-interrupted upload for up to 7 days by reopening the same browser profile and
-choosing the same file.
+Upload a file up to 1 GB, get a link, share it. Resume an interrupted upload for
+up to 7 days by reopening the same browser profile and choosing the same file.
+The link is a live exchange: everyone who opens it can download the shared files
+and add files back to the same link.
 
 The service runs on Fly.io. The files live in Cloudflare R2. What the service
 knows about those files lives in a Supabase Postgres database. The file bytes
@@ -343,7 +344,8 @@ user interface.
 
 ## Limits and what is missing
 
-- Up to 100 files per upload, each up to 1 GB. Two or more files share one link.
+- Each file is limited to 1 GB. A live exchange link can contain multiple files
+  and accepts new uploads from anyone holding the link.
 - A signed share link expires one hour, one day, or one week after upload
   completion. For several files, that is when the last of them finishes. Link access stops at that deadline; storage deletion is performed
   by the cleanup job, which runs while the Fly machine is awake. If Fly has
