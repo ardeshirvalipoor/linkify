@@ -9,6 +9,7 @@ export interface ShareCollectionRow {
     expiresAt: Date
     passwordHash: string | null
     revokedAt: Date | null
+    live: boolean
 }
 
 export interface ShareCollectionFileRow {
@@ -73,17 +74,18 @@ export async function createShareCollection(id: string, members: CollectionMembe
 // The collection at this id, revoked or not. The id of a single file answers null.
 export async function findShareCollection(id: string): Promise<ShareCollectionRow | null> {
     const [row] = await sql`
-        select id, expires_at, password_hash, revoked_at
-        from share_collections
-        where id = ${id}
-    `
-    if (!row) return null
-    return {
-        id: row.id,
-        expiresAt: row.expires_at,
-        passwordHash: row.password_hash,
-        revokedAt: row.revoked_at
-    }
+    select id, expires_at, password_hash, revoked_at, live
+    from share_collections
+    where id = ${id}
+`
+if (!row) return null
+return {
+    id: row.id,
+    expiresAt: row.expires_at,
+    passwordHash: row.password_hash,
+    revokedAt: row.revoked_at,
+    live: row.live
+}
 }
 
 // The files a collection still holds, in the order they were queued. A file that
@@ -127,5 +129,38 @@ export async function revokeShareCollection(id: string, revocationTokenHash: str
             )
         `
         return true
+    })
+}
+// Adds one finished file to a collection that still accepts files. The file takes
+// the collection's password and deadline, so the whole link expires together.
+export async function addShareCollectionFile(
+    collectionId: string,
+    fileId: string,
+    passwordHash: string | null
+): Promise<{ expiresAt: Date } | null> {
+    return sql.begin(async transaction => {
+        const [collection] = await transaction`
+            select id, expires_at, password_hash
+            from share_collections
+            where id = ${collectionId} and live and revoked_at is null and expires_at > now()
+        `
+        if (!collection || collection.password_hash !== passwordHash) return null
+
+        const [position] = await transaction`
+            select coalesce(max(position), -1) + 1 as position
+            from share_collection_files
+            where collection_id = ${collectionId}
+        `
+        await transaction`
+            insert into share_collection_files (collection_id, file_id, position)
+            values (${collectionId}, ${fileId}, ${position.position})
+            on conflict (collection_id, file_id) do nothing
+        `
+        await transaction`
+            update files
+            set password_hash = ${passwordHash}, expires_at = ${collection.expires_at}
+            where id in (${fileId}) and status = 'ready' and deleted_at is null and revoked_at is null
+        `
+        return { expiresAt: collection.expires_at }
     })
 }

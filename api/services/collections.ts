@@ -16,6 +16,7 @@ export interface CollectionInfo {
     id: string
     files: FileInfo[]
     protected: boolean
+    live: boolean
 }
 
 // A finished file, with the revocation token that came back when it finished.
@@ -52,6 +53,7 @@ export async function info(id: string, password?: string): Promise<CollectionInf
     return {
         id,
         protected: isProtected,
+        live: collection.live,
         files: files.map(file => ({
             id: file.id,
             fileName: file.fileName,

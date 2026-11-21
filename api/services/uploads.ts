@@ -10,7 +10,7 @@ import * as db from '../lib/db'
 import * as storage from '../lib/storage'
 import { readUploadToken, writeUploadToken } from '../lib/upload-token'
 import { HttpError } from '../lib/http-error'
-import { createShareLink, hashPassword, LinkExpiry, shareLinkExpiresAt } from '../lib/share-link'
+import { createShareLink, hashPassword, LinkExpiry, shareLinkExpiresAt, verifyPassword, verifyShareLink } from '../lib/share-link'
 import { createRevocationToken, hashRevocationToken } from '../lib/share-revocation'
 
 // Upload setup contains only file details; password protection is chosen when
@@ -71,7 +71,14 @@ export async function partUrl(token: string, partNumber: number): Promise<string
 }
 
 // Step four. Glue the parts together and return the link to share.
-export async function finish(token: string, expiresIn: LinkExpiry, password?: string): Promise<{ id: string; url: string; revocationToken: string }> {
+export async function finish(
+    token: string,
+    expiresIn: LinkExpiry,
+    password?: string,
+    collectionId?: string,
+    expiry?: unknown,
+    signature?: unknown
+): Promise<{ id: string; url: string; revocationToken: string }> {
     const upload = readUploadToken(token)
     const key = objectKey(upload.id)
 
@@ -102,14 +109,39 @@ export async function finish(token: string, expiresIn: LinkExpiry, password?: st
     // The row and the share link get the same expiry, and the cleanup reads it
     // from the row. The revocation capability is returned once and only its hash
     // is persisted.
-    const passwordHash = password?.trim() ? hashPassword(password.trim()) : null
+        let passwordHash = password?.trim() ? hashPassword(password.trim()) : null
     const revocationToken = createRevocationToken()
+    let expiresAt = shareLinkExpiresAt(expiresIn)
+    let shareId = upload.id
 
-    const expiresAt = shareLinkExpiresAt(expiresIn)
+    if (collectionId) {
+        verifyShareLink(collectionId, expiry, signature)
+        const collection = await db.findShareCollection(collectionId)
+        if (!collection || collection.revokedAt || collection.expiresAt.getTime() <= Date.now()) {
+            throw new HttpError(410, 'This live exchange is no longer active')
+        }
+        if (!collection.live) throw new HttpError(400, 'This share link does not accept new files')
+        if (typeof password !== 'string' || password.length === 0) {
+            if (collection.passwordHash) throw new HttpError(401, 'This live exchange is password protected')
+        } else if (!collection.passwordHash || !verifyPassword(password, collection.passwordHash)) {
+            throw new HttpError(401, 'This password is not correct')
+        }
+        passwordHash = collection.passwordHash
+        expiresAt = Math.floor(collection.expiresAt.getTime() / 1000)
+        shareId = collectionId
+    }
+
     await db.markFileReady(upload.id, passwordHash, new Date(expiresAt * 1000), hashRevocationToken(revocationToken))
 
-    return { id: upload.id, url: createShareLink(upload.id, expiresAt), revocationToken }
+    if (collectionId) {
+        const added = await db.addShareCollectionFile(collectionId, upload.id, passwordHash)
+        if (!added) throw new HttpError(400, 'This file could not be added to the live exchange')
+    }
+
+    return { id: upload.id, url: createShareLink(shareId, expiresAt), revocationToken }
 }
+
+
 
 // Give up on an upload and let the storage throw away the parts it collected.
 // R2 also answers yes when the upload had already finished, and the file stays
