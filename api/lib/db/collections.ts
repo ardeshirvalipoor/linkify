@@ -74,7 +74,7 @@ export async function createShareCollection(id: string, members: CollectionMembe
 // The collection at this id, revoked or not. The id of a single file answers null.
 export async function findShareCollection(id: string): Promise<ShareCollectionRow | null> {
     const [row] = await sql`
-    select id, expires_at, password_hash, revoked_at, live
+    select id, expires_at, password_hash, revoked_at
     from share_collections
     where id = ${id}
 `
@@ -84,7 +84,7 @@ return {
     expiresAt: row.expires_at,
     passwordHash: row.password_hash,
     revokedAt: row.revoked_at,
-    live: row.live
+    live: true
 }
 }
 
@@ -142,7 +142,7 @@ export async function addShareCollectionFile(
         const [collection] = await transaction`
             select id, expires_at, password_hash
             from share_collections
-            where id = ${collectionId} and live and revoked_at is null and expires_at > now()
+            where id = ${collectionId} and revoked_at is null and expires_at > now()
         `
         if (!collection || collection.password_hash !== passwordHash) return null
 

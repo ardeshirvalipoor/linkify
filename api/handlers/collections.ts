@@ -17,7 +17,7 @@ const createSchema = z.object({
 // POST /api/files/collections
 export async function create(req: Request, res: Response) {
     const result = createSchema.safeParse(req.body)
-    if (!result.success) throw new HttpError(400, `A share link holds from 2 to ${MAX_FILES_PER_LINK} finished files`)
+    if (!result.success) throw new HttpError(400, `A share link holds from 1 to ${MAX_FILES_PER_LINK} finished files`)
     res.status(201).json(await services.collections.create(result.data.files))
 }
 
