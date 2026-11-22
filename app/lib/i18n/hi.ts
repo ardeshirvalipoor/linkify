@@ -35,5 +35,9 @@ export const hi: Dictionary = {
     loading: 'लोड हो रहा है', protectedTitle: 'सुरक्षित फ़ाइल', protectedPrompt: 'फ़ाइल देखने और डाउनलोड करने के लिए पासवर्ड दर्ज करें।',
     enterPassword: 'पासवर्ड', unlock: 'अनलॉक करें', download: 'डाउनलोड करें', preview: 'पूर्वावलोकन', backToShare: 'शेयर लिंक पर वापस जाएँ', previewUnavailable: 'आपका ब्राउज़र इस फ़ाइल प्रकार का पूर्वावलोकन नहीं कर सकता। इसे खोलने के लिए डाउनलोड करें।', nothingHere: 'यहाँ कुछ नहीं है', linkDidNotWork: 'यह लिंक काम नहीं किया',
     pleaseEnterPassword: 'इस फ़ाइल का पासवर्ड दर्ज करें।', missingTitle: 'इस पते पर कुछ नहीं मिला',
-    missingIntro: 'लिंक गलत हो सकता है या फ़ाइल हटाई जा चुकी है।', sendFile: 'फ़ाइल भेजें'
+    missingIntro: 'लिंक गलत हो सकता है या फ़ाइल हटाई जा चुकी है।', sendFile: 'फ़ाइल भेजें',
+    letOthersAdd: 'लिंक वाले किसी भी व्यक्ति को फ़ाइलें जोड़ने दें', addFilesTitle: 'इस लिंक में फ़ाइलें जोड़ें',
+    addFilesDrop: 'फ़ाइलें चुनें या यहाँ छोड़ें', addFilesHint: 'हर फ़ाइल 1 GB तक। इस लिंक वाले सभी लोग इन्हें देखेंगे।',
+    addingFile: '{name} जोड़ी जा रही है', filesAdded: 'फ़ाइलें जोड़ दी गईं', fileNotAdded: '{name} नहीं जोड़ी जा सकी।',
+    linkIncomplete: 'यह लिंक अधूरा है। पूरा लिंक फिर से खोलें।'
 }

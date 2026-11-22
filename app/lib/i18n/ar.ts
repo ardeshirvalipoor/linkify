@@ -35,5 +35,9 @@ export const ar: Dictionary = {
     loading: 'جارٍ التحميل', protectedTitle: 'ملف محمي', protectedPrompt: 'أدخل كلمة المرور لمعاينة هذا الملف وتنزيله.',
     enterPassword: 'كلمة المرور', unlock: 'فتح القفل', download: 'تنزيل', preview: 'معاينة', backToShare: 'العودة إلى رابط المشاركة', previewUnavailable: 'لا يمكن للمتصفح معاينة هذا النوع من الملفات. استخدم زر التنزيل لفتحه.', nothingHere: 'لا يوجد شيء هنا', linkDidNotWork: 'هذا الرابط لا يعمل',
     pleaseEnterPassword: 'أدخل كلمة مرور هذا الملف.', missingTitle: 'لا يوجد شيء في هذا العنوان',
-    missingIntro: 'قد يكون الرابط مكتوبًا بشكل خاطئ أو ربما حُذف الملف.', sendFile: 'إرسال ملف'
+    missingIntro: 'قد يكون الرابط مكتوبًا بشكل خاطئ أو ربما حُذف الملف.', sendFile: 'إرسال ملف',
+    letOthersAdd: 'السماح لأي شخص لديه الرابط بإضافة ملفات', addFilesTitle: 'أضف ملفات إلى هذا الرابط',
+    addFilesDrop: 'اختر ملفات أو أسقطها هنا', addFilesHint: 'حتى 1 غيغابايت لكل ملف. سيراها كل من لديه هذا الرابط.',
+    addingFile: 'جارٍ إضافة {name}', filesAdded: 'تمت إضافة الملفات', fileNotAdded: 'تعذرت إضافة {name}.',
+    linkIncomplete: 'هذا الرابط غير مكتمل. افتح الرابط الكامل مرة أخرى.'
 }

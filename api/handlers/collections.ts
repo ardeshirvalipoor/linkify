@@ -11,14 +11,16 @@ const createSchema = z.object({
     files: z.array(z.object({
         id: z.string().regex(/^[A-Za-z0-9_-]{16}$/),
         revocationToken: z.string().regex(/^[A-Za-z0-9_-]{43}$/)
-    })).min(1).max(MAX_FILES_PER_LINK)
+    })).min(1).max(MAX_FILES_PER_LINK),
+    // Whether anyone holding the link may add files to it.
+    live: z.boolean().default(false)
 })
 
 // POST /api/files/collections
 export async function create(req: Request, res: Response) {
     const result = createSchema.safeParse(req.body)
     if (!result.success) throw new HttpError(400, `A share link holds from 1 to ${MAX_FILES_PER_LINK} finished files`)
-    res.status(201).json(await services.collections.create(result.data.files))
+    res.status(201).json(await services.collections.create(result.data.files, result.data.live))
 }
 
 // GET /api/files/:id/items/:fileId/download

@@ -5,15 +5,16 @@
 // storage. The bytes never come through our machine.
 
 import { Base, Button, Div, H1, Input, P, Page, IRouteEvent } from '@codesuma/baseline'
-import { fileInfo } from '../../lib/api'
+import { DropZone } from '../../components/drop-zone'
+import { TermsField } from '../../components/terms-field'
+import { CollectionInfo, fileInfo } from '../../lib/api'
 import { fileSize } from '../../lib/format'
-import { languageLocale, t } from '../../lib/i18n'
+import { languageLocale, t, translateUploadStatus } from '../../lib/i18n'
 import { createPreferencesBar } from '../../lib/preferences'
 import { createSiteNavigation } from '../../lib/site-navigation'
 import { show } from '../../lib/show'
-import { CollectionList } from './collection-list'
-import { DropZone } from '../../components/drop-zone'
 import { finishFile, sendFile } from '../../lib/upload'
+import { CollectionList } from './collection-list'
 
 export const DownloadPage = () => {
     const page = Page()
@@ -75,15 +76,19 @@ export const DownloadPage = () => {
     passwordError.el.style.flexBasis = '100%'
     passwordWrap.append(passwordError)
 
+    // Anyone holding a live link can add files to it. They accept the terms
+    // first, the same as on the upload page.
     const liveAddWrap = Div()
     liveAddWrap.addClass('live-exchange-add')
     show(liveAddWrap, false)
     const liveAddTitle = Base('strong')
-    liveAddTitle.text('Add to this live exchange')
-    const liveAddZone = DropZone('Choose files to add', 'Upload files to share in this same link')
+    liveAddTitle.text(t('addFilesTitle'))
+    const liveAddZone = DropZone(t('addFilesDrop'), t('addFilesHint'))
+    liveAddZone.setDisabled(true)
+    const liveAddTerms = TermsField(accepted => liveAddZone.setDisabled(adding || !accepted))
     const liveAddStatus = P('')
     liveAddStatus.addClass('note')
-    liveAddWrap.append(liveAddTitle, liveAddZone, liveAddStatus)
+    liveAddWrap.append(liveAddTitle, liveAddZone, liveAddTerms, liveAddStatus)
 
     const downloadButton = Button(t('download'))
     downloadButton.addClass('button', 'primary')
@@ -103,6 +108,8 @@ export const DownloadPage = () => {
     let previewUrl: string | null = null
     let unlockedPassword: string | undefined
     let liveExchangeId: string | null = null
+    let adding = false
+    let refreshTimer: number | undefined
 
     function resetPreview() {
         if (previewUrl) {
@@ -176,17 +183,11 @@ export const DownloadPage = () => {
             // Hide password controls after the supplied password has been accepted.
             show(passwordWrap, false)
             if (password) unlockedPassword = password
-            const expiresAt = Number(new URLSearchParams(window.location.search).get('expires'))
-            const expiryDate = new Date(expiresAt * 1000).toLocaleString(languageLocale())
+            const expiryDate = linkExpiryDate()
 
             if ('files' in file) {
                 heading.text(t('chooseFile'))
-           const totalSize = file.files.reduce((total, item) => total + item.size, 0)
-            meta.text(`${fileSize(totalSize)} · ${t('linkExpiresAt', { date: expiryDate })}`)
-            liveExchangeId = file.live ? file.id : null
-            show(liveAddWrap, file.live)
-            collectionFiles.render(file.id, file.files, password)
-                show(collectionFiles, true)
+                showCollection(file, password)
                 return
             }
 
@@ -220,16 +221,41 @@ export const DownloadPage = () => {
         }
     }
 
+    // When the link stops working, from the expiry signed into it.
+    function linkExpiryDate(): string {
+        const expiresAt = Number(new URLSearchParams(window.location.search).get('expires'))
+        return new Date(expiresAt * 1000).toLocaleString(languageLocale())
+    }
+
+    // The files in a link that holds several, and the add box when it is live.
+    function showCollection(file: CollectionInfo, password?: string) {
+        const totalSize = file.files.reduce((total, item) => total + item.size, 0)
+        meta.text(`${fileSize(totalSize)} · ${t('linkExpiresAt', { date: linkExpiryDate() })}`)
+        liveExchangeId = file.live ? file.id : null
+        show(liveAddWrap, file.live)
+        collectionFiles.render(file.id, file.files, password)
+        show(collectionFiles, true)
+    }
+
+    // Picks up files that others added, without blanking the page first.
+    async function refreshCollection(id: string) {
+        const file = await fileInfo(id, unlockedPassword).catch(() => null)
+        if (file && 'files' in file) showCollection(file, unlockedPassword)
+    }
+
     // The router hands the page a fresh `enter` event every time someone
     // navigates here, with the :id from the address bar in params.
     page.on('enter', async ({ params }: IRouteEvent) => {
         // Every viewer, including the uploader's own Open action, must unlock protected files.
         await loadFile(params.id)
-        const pollingId = params.id
-        window.setInterval(() => {
-            if (liveExchangeId === pollingId) void loadFile(pollingId, unlockedPassword)
+        // Others may add files to a live link, so its list refreshes while the page is open.
+        window.clearInterval(refreshTimer)
+        refreshTimer = window.setInterval(() => {
+            if (liveExchangeId && !adding) void refreshCollection(liveExchangeId)
         }, 5 * 60 * 1000)
     })
+
+    page.on('exit', () => window.clearInterval(refreshTimer))
 
     unlockButton.on('click', async () => {
         const password = passwordInput.value().trim()
@@ -250,40 +276,40 @@ export const DownloadPage = () => {
         window.location.href = downloadPath
     })
 
-    liveAddZone.on('files', (files: File[]) => {
-        if (!liveExchangeId) return
+    // Sends the files one after another into the open link. A failure is kept
+    // and shown at the end, so a later file's progress cannot hide it.
+    liveAddZone.on('files', async (files: File[]) => {
+        const id = liveExchangeId
+        if (!id || adding) return
         const params = new URLSearchParams(window.location.search)
         const expires = params.get('expires')
         const signature = params.get('signature')
         if (!expires || !signature) {
-            liveAddStatus.text('This live exchange link is incomplete')
+            liveAddStatus.text(t('linkIncomplete'))
             return
         }
 
-        void (async () => {
-            liveAddZone.setDisabled(true)
-            for (const file of files) {
-                liveAddStatus.text(`Adding ${file.name}...`)
-                try {
-                        const options = {
-                        onStatus: (message: string) => liveAddStatus.text(message),
-                        onProgress: () => undefined
-                    }
-                    const token = await sendFile(file, options)
-                    await finishFile(file, token, options.onStatus, '1h', unlockedPassword, {
-                        id: liveExchangeId,
-                        expires,
-                        signature
-                    })
-                } catch (problem) {
-                    liveAddStatus.text(problem instanceof Error ? problem.message : 'The file could not be added')
-                    continue
-                }
+        adding = true
+        liveAddZone.setDisabled(true)
+        liveAddStatus.removeClass('error')
+        const failures: string[] = []
+        const onStatus = (message: string) => liveAddStatus.text(translateUploadStatus(message))
+        for (const file of files) {
+            liveAddStatus.text(t('addingFile', { name: file.name }))
+            try {
+                const token = await sendFile(file, { onStatus, onProgress: () => undefined })
+                // The link's own deadline replaces the expiry given here.
+                await finishFile(file, token, onStatus, '1h', unlockedPassword, { id, expires, signature })
+            } catch (problem) {
+                failures.push(`${t('fileNotAdded', { name: file.name })} ${problem instanceof Error ? problem.message : ''}`.trim())
             }
-            liveAddStatus.text('Live exchange updated')
-            liveAddZone.setDisabled(false)
-            await loadFile(liveExchangeId, unlockedPassword)
-        })()
+        }
+
+        await refreshCollection(id)
+        liveAddStatus.text(failures.length ? failures.join(' ') : t('filesAdded'))
+        liveAddStatus.toggleClass('error', failures.length > 0)
+        adding = false
+        liveAddZone.setDisabled(!liveAddTerms.accepted())
     })
 
     return page

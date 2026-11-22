@@ -96,9 +96,9 @@ export async function revokeShareLink(id: string, revocationToken: string): Prom
 }
 
 // Joins finished files into one link. Each file's own revocation token proves
-// that this browser uploaded it.
-export async function createShareCollection(files: { id: string; revocationToken: string }[]): Promise<ShareLink> {
-    return unwrap(await http.post('/api/files/collections', { files }))
+// that this browser uploaded it. A live link lets anyone who has it add files.
+export async function createShareCollection(files: { id: string; revocationToken: string }[], live: boolean): Promise<ShareLink> {
+    return unwrap(await http.post('/api/files/collections', { files, live }))
 }
 
 export async function cancelUpload(token: string): Promise<void> {

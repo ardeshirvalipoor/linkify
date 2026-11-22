@@ -36,5 +36,9 @@ export const ja: Dictionary = {
     loading: '読み込み中', protectedTitle: '保護されたファイル', protectedPrompt: 'プレビューとダウンロードにはパスワードを入力してください。',
     enterPassword: 'パスワード', unlock: 'ロック解除', download: 'ダウンロード', preview: 'プレビュー', backToShare: '共有リンクに戻る', previewUnavailable: 'このファイル形式はブラウザーでプレビューできません。ダウンロードして開いてください。', nothingHere: 'ファイルがありません', linkDidNotWork: 'このリンクは利用できません',
     pleaseEnterPassword: 'このファイルのパスワードを入力してください。', missingTitle: 'このアドレスにページはありません',
-    missingIntro: 'リンクが間違っているか、ファイルが削除された可能性があります。', sendFile: 'ファイルを送信'
+    missingIntro: 'リンクが間違っているか、ファイルが削除された可能性があります。', sendFile: 'ファイルを送信',
+    letOthersAdd: 'リンクを知っている人なら誰でもファイルを追加できるようにする', addFilesTitle: 'このリンクにファイルを追加',
+    addFilesDrop: 'ファイルを選択するか、ここにドロップ', addFilesHint: '1 ファイルあたり 1 GB まで。このリンクを持つ全員に表示されます。',
+    addingFile: '{name} を追加しています', filesAdded: 'ファイルを追加しました', fileNotAdded: '{name} を追加できませんでした。',
+    linkIncomplete: 'このリンクは不完全です。完全なリンクをもう一度開いてください。'
 }

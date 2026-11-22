@@ -1,9 +1,9 @@
 # File sharing
 
-Upload a file up to 1 GB, get a link, share it. Resume an interrupted upload for
-up to 7 days by reopening the same browser profile and choosing the same file.
-The link is a live exchange: everyone who opens it can download the shared files
-and add files back to the same link.
+Upload up to 100 files of up to 1 GB each, get one link, share it. Resume an
+interrupted upload for up to 7 days by reopening the same browser profile and
+choosing the same file. The uploader can also make the link a live exchange, so
+that anyone who opens it can add files to it.
 
 The service runs on Fly.io. The files live in Cloudflare R2. What the service
 knows about those files lives in a Supabase Postgres database. The file bytes
@@ -142,7 +142,8 @@ the link from that browser.
 Links created before this feature was deployed do not have a revocation
 credential and cannot be revoked through the uploader page.
 
-Revoking a link that holds several files also revokes every file in it.
+Revoking a link that holds several files also revokes every file in it. That
+includes files that other people added to a live exchange.
 
 Direct storage download URLs issued before revocation are short-lived and can
 remain usable for up to five minutes. Revocation disables the share link
@@ -185,6 +186,28 @@ collection. The collection lasts as long as its newest file, and the server keep
 the older files until then. Each file's own link still expires on its own
 schedule, because that expiry is signed into it. The files must share one
 password, because the link has only one.
+
+### Letting others add files
+
+The upload page has a switch, **Let anyone with the link add files**. It starts
+off. When it is on, the link becomes a live exchange. The server makes a
+collection even for one file, and the share page shows a box for adding files.
+
+Anyone who opens a live exchange can add files to it. They must accept the
+terms first. When the link has a password, they must enter it first, too.
+
+An added file takes the link's password and the link's deadline. So the whole
+link still expires together. A live exchange holds at most 100 files.
+
+The server checks the link before it joins the added file's parts. When the
+link is revoked, expired, closed or the password is wrong, the server refuses
+the file, and its parts stay an unfinished upload. The bucket's lifecycle rule
+then removes them. Nothing is left behind in the bucket.
+
+The share page reloads the list of files every 5 minutes, so files that others
+add show up without a reload.
+
+Links made before this switch existed are not live.
 
 The full walkthrough, with the reasoning behind every choice, is in
 [docs/how-it-works.md](docs/how-it-works.md).
@@ -260,13 +283,13 @@ That reads `supabase/migrations` and creates the schema. Run the same command
 when upgrading an existing deployment so new migrations, including the
 revocation columns, are applied before deploying the updated server.
 
-| Table                    | One row for                            |
-| ------------------------ | -------------------------------------- |
-| `files`                  | Every upload that has been started     |
-| `downloads`              | Every download that has happened       |
-| `profiles`               | Every account, once there are accounts |
-| `share_collections`      | Every link that holds several files    |
-| `share_collection_files` | Every file in such a link              |
+| Table                    | One row for                                          |
+| ------------------------ | ---------------------------------------------------- |
+| `files`                  | Every upload that has been started                   |
+| `downloads`              | Every download that has happened                     |
+| `profiles`               | Every account, once there are accounts               |
+| `share_collections`      | Every link that holds several files, or that is live |
+| `share_collection_files` | Every file in such a link                            |
 
 Every table has row level security turned on and no policies written. Supabase
 publishes every table through a REST API that its public key can reach, and this
@@ -344,8 +367,9 @@ user interface.
 
 ## Limits and what is missing
 
-- Each file is limited to 1 GB. A live exchange link can contain multiple files
-  and accepts new uploads from anyone holding the link.
+- Up to 100 files per upload, each up to 1 GB. Two or more files share one link.
+- A live exchange accepts files from anyone holding the link, up to 100 in all.
+  Nothing shows who added which file.
 - A signed share link expires one hour, one day, or one week after upload
   completion. For several files, that is when the last of them finishes. Link access stops at that deadline; storage deletion is performed
   by the cleanup job, which runs while the Fly machine is awake. If Fly has

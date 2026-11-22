@@ -35,5 +35,9 @@ export const zh: Dictionary = {
     loading: '正在加载', protectedTitle: '受保护的文件', protectedPrompt: '请输入密码以预览并下载此文件。',
     enterPassword: '密码', unlock: '解锁', download: '下载', preview: '预览', backToShare: '返回分享链接', previewUnavailable: '浏览器无法预览此文件类型。请使用“下载”打开。', nothingHere: '这里没有内容', linkDidNotWork: '此链接无法使用',
     pleaseEnterPassword: '请输入此文件的密码。', missingTitle: '此地址没有内容',
-    missingIntro: '链接可能输入错误，或它指向的文件已不存在。', sendFile: '发送文件'
+    missingIntro: '链接可能输入错误，或它指向的文件已不存在。', sendFile: '发送文件',
+    letOthersAdd: '允许任何拥有链接的人添加文件', addFilesTitle: '向此链接添加文件',
+    addFilesDrop: '选择文件或拖放到此处', addFilesHint: '每个文件最大 1 GB。拥有此链接的人都能看到。',
+    addingFile: '正在添加 {name}', filesAdded: '文件已添加', fileNotAdded: '无法添加 {name}。',
+    linkIncomplete: '此链接不完整。请重新打开完整链接。'
 }

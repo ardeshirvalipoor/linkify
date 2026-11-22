@@ -10,8 +10,9 @@ import * as db from '../lib/db'
 import * as storage from '../lib/storage'
 import { readUploadToken, writeUploadToken } from '../lib/upload-token'
 import { HttpError } from '../lib/http-error'
-import { createShareLink, hashPassword, LinkExpiry, shareLinkExpiresAt, verifyPassword, verifyShareLink } from '../lib/share-link'
+import { createShareLink, hashPassword, LinkExpiry, shareLinkExpiresAt } from '../lib/share-link'
 import { createRevocationToken, hashRevocationToken } from '../lib/share-revocation'
+import * as collections from './collections'
 
 // Upload setup contains only file details; password protection is chosen when
 // the upload finishes so it works the same for fresh and resumed uploads.
@@ -70,7 +71,8 @@ export async function partUrl(token: string, partNumber: number): Promise<string
     return storage.presignPartUrl(objectKey(upload.id), upload.uploadId, partNumber)
 }
 
-// Step four. Glue the parts together and return the link to share.
+// Step four. Glue the parts together and return the link to share. A file can
+// also join a live link that someone else made, and then it gets that link.
 export async function finish(
     token: string,
     expiresIn: LinkExpiry,
@@ -81,6 +83,12 @@ export async function finish(
 ): Promise<{ id: string; url: string; revocationToken: string }> {
     const upload = readUploadToken(token)
     const key = objectKey(upload.id)
+
+    // A file for a live link is checked against that link first. A refused file
+    // then stays an unfinished upload, which the bucket's lifecycle rule removes.
+    // Refusing it after the parts were glued would leave a whole file in the
+    // bucket that no cleanup ever deletes.
+    const collection = collectionId ? await collections.joinable(collectionId, expiry, signature, password) : null
 
     // We ask the bucket what it has rather than trusting a list sent by the
     // browser. The bucket is the only place that knows for certain, and its
@@ -108,40 +116,21 @@ export async function finish(
     // therefore use the password entered at the moment it is completed.
     // The row and the share link get the same expiry, and the cleanup reads it
     // from the row. The revocation capability is returned once and only its hash
-    // is persisted.
-        let passwordHash = password?.trim() ? hashPassword(password.trim()) : null
-    const revocationToken = createRevocationToken()
+    // is persisted. A file that joins a live link takes that link's password and
+    // deadline instead.
+    let passwordHash = password?.trim() ? hashPassword(password.trim()) : null
     let expiresAt = shareLinkExpiresAt(expiresIn)
-    let shareId = upload.id
-
-    if (collectionId) {
-        verifyShareLink(collectionId, expiry, signature)
-        const collection = await db.findShareCollection(collectionId)
-        if (!collection || collection.revokedAt || collection.expiresAt.getTime() <= Date.now()) {
-            throw new HttpError(410, 'This live exchange is no longer active')
-        }
-        if (!collection.live) throw new HttpError(400, 'This share link does not accept new files')
-        if (typeof password !== 'string' || password.length === 0) {
-            if (collection.passwordHash) throw new HttpError(401, 'This live exchange is password protected')
-        } else if (!collection.passwordHash || !verifyPassword(password, collection.passwordHash)) {
-            throw new HttpError(401, 'This password is not correct')
-        }
+    if (collection) {
         passwordHash = collection.passwordHash
         expiresAt = Math.floor(collection.expiresAt.getTime() / 1000)
-        shareId = collectionId
     }
+    const revocationToken = createRevocationToken()
 
     await db.markFileReady(upload.id, passwordHash, new Date(expiresAt * 1000), hashRevocationToken(revocationToken))
+    if (collection) await collections.add(collection, upload.id)
 
-    if (collectionId) {
-        const added = await db.addShareCollectionFile(collectionId, upload.id, passwordHash)
-        if (!added) throw new HttpError(400, 'This file could not be added to the live exchange')
-    }
-
-    return { id: upload.id, url: createShareLink(shareId, expiresAt), revocationToken }
+    return { id: upload.id, url: createShareLink(collection?.id ?? upload.id, expiresAt), revocationToken }
 }
-
-
 
 // Give up on an upload and let the storage throw away the parts it collected.
 // R2 also answers yes when the upload had already finished, and the file stays

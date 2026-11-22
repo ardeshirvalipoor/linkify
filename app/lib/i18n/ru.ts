@@ -36,5 +36,9 @@ export const ru: Dictionary = {
     loading: 'Загрузка', protectedTitle: 'Защищённый файл', protectedPrompt: 'Введите пароль, чтобы просмотреть и скачать файл.',
     enterPassword: 'Пароль', unlock: 'Разблокировать', download: 'Скачать', preview: 'Предпросмотр', backToShare: 'Вернуться к ссылке', previewUnavailable: 'Браузер не может показать этот тип файла. Нажмите «Скачать», чтобы открыть его.', nothingHere: 'Здесь ничего нет', linkDidNotWork: 'Ссылка не работает',
     pleaseEnterPassword: 'Введите пароль для этого файла.', missingTitle: 'По этому адресу ничего нет',
-    missingIntro: 'Возможно, ссылка указана неверно или файл удалён.', sendFile: 'Отправить файл'
+    missingIntro: 'Возможно, ссылка указана неверно или файл удалён.', sendFile: 'Отправить файл',
+    letOthersAdd: 'Разрешить всем, у кого есть ссылка, добавлять файлы', addFilesTitle: 'Добавить файлы по этой ссылке',
+    addFilesDrop: 'Выберите или перетащите файлы сюда', addFilesHint: 'До 1 ГБ каждый. Их увидят все, у кого есть эта ссылка.',
+    addingFile: 'Добавляем {name}', filesAdded: 'Файлы добавлены', fileNotAdded: 'Не удалось добавить {name}.',
+    linkIncomplete: 'Ссылка неполная. Откройте полную ссылку ещё раз.'
 }

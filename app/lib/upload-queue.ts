@@ -4,7 +4,8 @@
 // a single upload does. No file is finished until every file has been sent.
 // Finishing is what starts a link's lifetime, so a long queue, or a pause in the
 // middle of one, does not eat into it. When more than one file has finished, the
-// server joins them into one link.
+// server joins them into one link. A live link is made even for one file,
+// because others may add files to it later.
 //
 // Nothing here touches the screen. The page passes in callbacks and decides for
 // itself what to draw.
@@ -34,6 +35,8 @@ export interface QueueItem {
 export interface RunOptions {
     expiresIn: api.LinkExpiry
     password?: string
+    // Whether anyone holding the link may add files to it.
+    live: boolean
     onItem(item: QueueItem): void
     onStatus(message: string): void
     onProgress(report: UploadReport): void
@@ -112,8 +115,8 @@ export function createUploadQueue() {
             }
 
             const finished = items.flatMap(item => item.link ? [item.link] : [])
-            if (finished.length < 1) return { paused: false, link: finished[0], error }
-            const link = await api.createShareCollection(finished.map(({ id, revocationToken }) => ({ id, revocationToken })))
+            if (finished.length < (options.live ? 1 : 2)) return { paused: false, link: finished[0], error }
+            const link = await api.createShareCollection(finished.map(({ id, revocationToken }) => ({ id, revocationToken })), options.live)
             return { paused: false, link, error }
         } catch (problem) {
             return { paused: false, error: describe(problem) }

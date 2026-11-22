@@ -8,6 +8,7 @@
 import { Button, Div, H1, P, Page } from '@codesuma/baseline'
 import { DropZone } from '../../components/drop-zone'
 import { Progress } from '../../components/progress'
+import { TermsField } from '../../components/terms-field'
 import * as api from '../../lib/api'
 import { fileSize } from '../../lib/format'
 import { t, translateUploadStatus } from '../../lib/i18n'
@@ -22,12 +23,12 @@ import { About } from './about'
 import { Benefits } from './benefits'
 import { ExpiryField } from './expiry-field'
 import { FilePreview } from './file-preview'
+import { LiveField } from './live-field'
 import { PasswordField } from './password-field'
 import { PauseButton } from './pause-button'
 import { QueueList } from './queue-list'
 import { RevokeControl } from './revoke-control'
 import { SharePanel } from './share-panel'
-import { TermsField } from './terms-field'
 import { Toast } from './toast'
 import styles from './index.module.css'
 
@@ -50,6 +51,7 @@ export const UploadPage = () => {
 
     const expiry = ExpiryField()
     const password = PasswordField()
+    const live = LiveField()
     const dropZone = DropZone(t('dropTitle'), t('dropHint'))
     const queueList = QueueList()
     const preview = FilePreview()
@@ -124,7 +126,7 @@ export const UploadPage = () => {
 
     const toast = Toast()
 
-    card.append(heading, intro, expiry, password, dropZone, queueList, preview, fileRow, resumeNote, actions, terms, progress, status, share, expirySummary, error, endActions)
+    card.append(heading, intro, expiry, password, live, dropZone, queueList, preview, fileRow, resumeNote, actions, terms, progress, status, share, expirySummary, error, endActions)
     page.append(createSiteNavigation(), createPreferencesBar(), card, Benefits(), About(), share.dialog, revoke.dialog)
 
     // --- state ---------------------------------------------------------------
@@ -147,6 +149,7 @@ export const UploadPage = () => {
         queueList.render(queue.items)
         show(expiry, choosing)
         show(password, choosing)
+        show(live, choosing)
         show(terms, choosing)
         show(preview, stage === 'chosen' || running)
         show(fileRow, stage !== 'idle')
@@ -269,6 +272,7 @@ export const UploadPage = () => {
         const result = await queue.run({
             expiresIn: expiry.value(),
             password: chosenPassword,
+            live: live.checked(),
             onItem: itemChanged,
             onStatus: message => status.text(translateUploadStatus(message)),
             onProgress: report => progress.update(report.uploadedBytes, report.totalBytes)
@@ -290,7 +294,8 @@ export const UploadPage = () => {
         }
 
         const revocationTokenSaved = storeRevocationToken(result.link.id, result.link.revocationToken)
-        share.setLink(result.link.url, queue.items.filter(item => item.link).length === 1)
+        // Only a one-file link that is not live has a preview page of its own.
+        share.setLink(result.link.url, !live.checked() && queue.items.filter(item => item.link).length === 1)
         revoke.set(result.link.id, result.link.revocationToken)
         const expiryText = t('expirySummary', { duration: expiry.label() })
         expirySummary.text(revocationTokenSaved ? expiryText : `${expiryText} ${t('revocationNotSaved')}`)
@@ -352,6 +357,7 @@ export const UploadPage = () => {
         toast.dismiss()
         progress.reset()
         password.reset()
+        live.reset()
         terms.reset()
         updateUploadAvailability()
         preview.clear()
