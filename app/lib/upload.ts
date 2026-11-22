@@ -82,10 +82,10 @@ export async function sendFile(file: File, options: UploadOptions): Promise<stri
 // Glues the parts into one file and returns its link, whose lifetime starts now.
 // The password is passed only here, so a resumed upload uses the current value
 // rather than a value captured when its token was first created.
-export async function finishFile(file: File, token: string, onStatus: (message: string) => void, expiresIn: api.LinkExpiry, password?: string): Promise<api.ShareLink> {
+export async function finishFile(file: File, token: string, onStatus: (message: string) => void, expiresIn: api.LinkExpiry, password?: string, liveExchange?: { id: string; expires: string; signature: string }): Promise<api.ShareLink> {
     const id = fingerprint(file)
     onStatus('Putting the parts together')
-    const finished = await api.finishUpload(token, expiresIn, password).catch(async (problem: unknown) => {
+    const finished = await api.finishUpload(token, expiresIn, password, liveExchange).catch(async (problem: unknown) => {
         // The storage no longer has this upload, so the note can never be resumed.
         if (problem instanceof api.ApiError && problem.status === 410) await forget(id)
         throw problem

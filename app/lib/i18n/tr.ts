@@ -36,5 +36,9 @@ export const tr: Dictionary = {
     loading: 'Yükleniyor', protectedTitle: 'Korumalı dosya', protectedPrompt: 'Dosyayı önizlemek ve indirmek için parolayı girin.',
     enterPassword: 'Parola', unlock: 'Kilidi aç', download: 'İndir', preview: 'Önizleme', backToShare: 'Paylaşım bağlantısına dön', previewUnavailable: 'Tarayıcınız bu dosya türünü önizleyemiyor. Açmak için İndir seçeneğini kullanın.', nothingHere: 'Burada bir şey yok', linkDidNotWork: 'Bu bağlantı çalışmadı',
     pleaseEnterPassword: 'Bu dosyanın parolasını girin.', missingTitle: 'Bu adreste bir şey yok',
-    missingIntro: 'Bağlantı yanlış yazılmış olabilir veya işaret ettiği dosya kaldırılmıştır.', sendFile: 'Dosya gönder'
+    missingIntro: 'Bağlantı yanlış yazılmış olabilir veya işaret ettiği dosya kaldırılmıştır.', sendFile: 'Dosya gönder',
+    letOthersAdd: 'Bağlantıya sahip herkes dosya ekleyebilsin', addFilesTitle: 'Bu bağlantıya dosya ekle',
+    addFilesDrop: 'Dosya seçin veya buraya bırakın', addFilesHint: 'Dosya başına en fazla 1 GB. Bu bağlantıya sahip herkes görebilir.',
+    addingFile: '{name} ekleniyor', filesAdded: 'Dosyalar eklendi', fileNotAdded: '{name} eklenemedi.',
+    linkIncomplete: 'Bu bağlantı eksik. Bağlantının tamamını yeniden açın.'
 }

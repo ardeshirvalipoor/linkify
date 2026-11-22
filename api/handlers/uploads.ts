@@ -21,7 +21,10 @@ const startSchema = z.object({
 // Password is chosen at completion so resumed uploads use the latest value.
 const finishSchema = z.object({
     expiresIn: z.enum(['1h', '1d', '1w']),
-    password: z.string().trim().min(6).max(128).optional()
+    password: z.string().trim().min(6).max(128).optional(),
+    collectionId: z.string().regex(/^[A-Za-z0-9_-]{16}$/).optional(),
+    expires: z.union([z.string(), z.number()]).optional(),
+    signature: z.string().optional()
 })
 
 // POST /api/uploads
@@ -43,8 +46,8 @@ export async function partUrl(req: Request<{ token: string; partNumber: string }
 
 // POST /api/uploads/:token/complete
 export async function finish(req: Request<{ token: string }>, res: Response) {
-    const { expiresIn, password } = parse(finishSchema, req.body)
-    res.json(await services.uploads.finish(req.params.token, expiresIn, password))
+    const { expiresIn, password, collectionId, expires, signature } = parse(finishSchema, req.body)
+    res.json(await services.uploads.finish(req.params.token, expiresIn, password, collectionId, expires, signature))
 }
 
 // DELETE /api/uploads/:token

@@ -36,5 +36,9 @@ export const pt: Dictionary = {
     loading: 'A carregar', protectedTitle: 'Ficheiro protegido', protectedPrompt: 'Introduza a palavra-passe para pré-visualizar e transferir este ficheiro.',
     enterPassword: 'Palavra-passe', unlock: 'Desbloquear', download: 'Transferir', preview: 'Pré-visualizar', backToShare: 'Voltar à ligação partilhada', previewUnavailable: 'O navegador não consegue pré-visualizar este tipo de ficheiro. Use Transferir para o abrir.', nothingHere: 'Não há nada aqui', linkDidNotWork: 'Esta ligação não funcionou',
     pleaseEnterPassword: 'Introduza a palavra-passe deste ficheiro.', missingTitle: 'Não existe nada neste endereço',
-    missingIntro: 'A ligação pode estar incorreta ou o ficheiro já não existe.', sendFile: 'Enviar um ficheiro'
+    missingIntro: 'A ligação pode estar incorreta ou o ficheiro já não existe.', sendFile: 'Enviar um ficheiro',
+    letOthersAdd: 'Permitir que qualquer pessoa com a ligação adicione ficheiros', addFilesTitle: 'Adicionar ficheiros a esta ligação',
+    addFilesDrop: 'Escolha ficheiros ou largue-os aqui', addFilesHint: 'Até 1 GB cada. Todos os que tiverem esta ligação vão vê-los.',
+    addingFile: 'A adicionar {name}', filesAdded: 'Ficheiros adicionados', fileNotAdded: 'Não foi possível adicionar {name}.',
+    linkIncomplete: 'Esta ligação está incompleta. Abra novamente a ligação completa.'
 }

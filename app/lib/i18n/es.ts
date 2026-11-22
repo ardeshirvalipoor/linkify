@@ -35,5 +35,9 @@ export const es: Dictionary = {
     loading: 'Cargando', protectedTitle: 'Archivo protegido', protectedPrompt: 'Introduce la contraseña para previsualizar y descargar este archivo.',
     enterPassword: 'Contraseña', unlock: 'Desbloquear', download: 'Descargar', preview: 'Vista previa', backToShare: 'Volver al enlace compartido', previewUnavailable: 'El navegador no puede previsualizar este tipo de archivo. Usa Descargar para abrirlo.', nothingHere: 'No hay nada aquí', linkDidNotWork: 'Este enlace no funciona',
     pleaseEnterPassword: 'Introduce la contraseña de este archivo.', missingTitle: 'No hay nada en esta dirección',
-    missingIntro: 'Puede que el enlace esté mal escrito o que el archivo ya no exista.', sendFile: 'Enviar un archivo'
+    missingIntro: 'Puede que el enlace esté mal escrito o que el archivo ya no exista.', sendFile: 'Enviar un archivo',
+    letOthersAdd: 'Dejar que cualquiera con el enlace añada archivos', addFilesTitle: 'Añadir archivos a este enlace',
+    addFilesDrop: 'Elige archivos o suéltalos aquí', addFilesHint: 'Hasta 1 GB cada uno. Todos los que tengan este enlace los verán.',
+    addingFile: 'Añadiendo {name}', filesAdded: 'Archivos añadidos', fileNotAdded: 'No se pudo añadir {name}.',
+    linkIncomplete: 'Este enlace está incompleto. Vuelve a abrir el enlace completo.'
 }

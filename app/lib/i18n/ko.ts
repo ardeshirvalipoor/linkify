@@ -36,5 +36,9 @@ export const ko: Dictionary = {
     loading: '불러오는 중', protectedTitle: '보호된 파일', protectedPrompt: '파일을 미리 보고 다운로드하려면 비밀번호를 입력하세요.',
     enterPassword: '비밀번호', unlock: '잠금 해제', download: '다운로드', preview: '미리보기', backToShare: '공유 링크로 돌아가기', previewUnavailable: '브라우저에서 이 파일 형식을 미리 볼 수 없습니다. 다운로드하여 여세요.', nothingHere: '항목이 없습니다', linkDidNotWork: '이 링크를 사용할 수 없습니다',
     pleaseEnterPassword: '이 파일의 비밀번호를 입력하세요.', missingTitle: '이 주소에 페이지가 없습니다',
-    missingIntro: '링크가 잘못되었거나 파일이 삭제되었을 수 있습니다.', sendFile: '파일 보내기'
+    missingIntro: '링크가 잘못되었거나 파일이 삭제되었을 수 있습니다.', sendFile: '파일 보내기',
+    letOthersAdd: '링크가 있는 누구나 파일을 추가할 수 있게 하기', addFilesTitle: '이 링크에 파일 추가',
+    addFilesDrop: '파일을 선택하거나 여기에 놓으세요', addFilesHint: '파일당 최대 1GB. 이 링크가 있는 모든 사람이 볼 수 있습니다.',
+    addingFile: '{name} 추가 중', filesAdded: '파일을 추가했습니다', fileNotAdded: '{name}을(를) 추가하지 못했습니다.',
+    linkIncomplete: '링크가 불완전합니다. 전체 링크를 다시 열어 주세요.'
 }
