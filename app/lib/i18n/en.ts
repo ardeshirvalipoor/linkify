@@ -29,7 +29,11 @@ export const en = {
     loading: 'Loading', protectedTitle: 'Protected file', protectedPrompt: 'Enter the password to preview and download this file.',
     enterPassword: 'Password', unlock: 'Unlock', download: 'Download', preview: 'Preview', backToShare: 'Back to share link', previewUnavailable: 'Your browser cannot preview this file type. Use Download to open it.', nothingHere: 'Nothing here', linkDidNotWork: 'This link did not work',
     pleaseEnterPassword: 'Please enter the password for this file.', missingTitle: 'Nothing at this address',
-    missingIntro: 'The link may have been mistyped, or the file it pointed at is gone.', sendFile: 'Send a file'
+    missingIntro: 'The link may have been mistyped, or the file it pointed at is gone.', sendFile: 'Send a file',
+    letOthersAdd: 'Let anyone with the link add files', addFilesTitle: 'Add files to this link',
+    addFilesDrop: 'Choose files or drop them here', addFilesHint: 'Up to 1 GB each. Everyone with this link will see them.',
+    addingFile: 'Adding {name}', filesAdded: 'Files added', fileNotAdded: '{name} could not be added.',
+    linkIncomplete: 'This link is incomplete. Open the full link again.'
 }
 
 export type TranslationKey = keyof typeof en

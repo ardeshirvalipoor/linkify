@@ -1,10 +1,11 @@
 // The consent checkbox. It sits directly under the upload field, and nothing can
-// be chosen or sent until it is ticked.
+// be chosen or sent until it is ticked. The share page uses it too, before
+// someone adds files to a link.
 
 import { Base, Div, Input, P, Span } from '@codesuma/baseline'
 import { t } from '../../lib/i18n'
 import { show } from '../../lib/show'
-import styles from './terms-field.module.css'
+import styles from './index.module.css'
 
 export const TermsField = (onChange: (accepted: boolean) => void) => {
     const base = Div()

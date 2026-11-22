@@ -5,12 +5,15 @@
 // storage. The bytes never come through our machine.
 
 import { Base, Button, Div, H1, Input, P, Page, IRouteEvent } from '@codesuma/baseline'
-import { fileInfo } from '../../lib/api'
+import { DropZone } from '../../components/drop-zone'
+import { TermsField } from '../../components/terms-field'
+import { CollectionInfo, fileInfo } from '../../lib/api'
 import { fileSize } from '../../lib/format'
-import { languageLocale, t } from '../../lib/i18n'
+import { languageLocale, t, translateUploadStatus } from '../../lib/i18n'
 import { createPreferencesBar } from '../../lib/preferences'
 import { createSiteNavigation } from '../../lib/site-navigation'
 import { show } from '../../lib/show'
+import { finishFile, sendFile } from '../../lib/upload'
 import { CollectionList } from './collection-list'
 
 export const DownloadPage = () => {
@@ -73,6 +76,20 @@ export const DownloadPage = () => {
     passwordError.el.style.flexBasis = '100%'
     passwordWrap.append(passwordError)
 
+    // Anyone holding a live link can add files to it. They accept the terms
+    // first, the same as on the upload page.
+    const liveAddWrap = Div()
+    liveAddWrap.addClass('live-exchange-add')
+    show(liveAddWrap, false)
+    const liveAddTitle = Base('strong')
+    liveAddTitle.text(t('addFilesTitle'))
+    const liveAddZone = DropZone(t('addFilesDrop'), t('addFilesHint'))
+    liveAddZone.setDisabled(true)
+    const liveAddTerms = TermsField(accepted => liveAddZone.setDisabled(adding || !accepted))
+    const liveAddStatus = P('')
+    liveAddStatus.addClass('note')
+    liveAddWrap.append(liveAddTitle, liveAddZone, liveAddTerms, liveAddStatus)
+
     const downloadButton = Button(t('download'))
     downloadButton.addClass('button', 'primary')
 
@@ -83,12 +100,16 @@ export const DownloadPage = () => {
     const error = P('')
     error.addClass('error')
 
-    card.append(heading, meta, previewWrap, collectionFiles, passwordWrap, actions, error)
+    card.append(heading, meta, previewWrap, collectionFiles, passwordWrap, liveAddWrap, actions, error)
     page.append(siteNavigation, preferencesBar, card)
 
     let downloadPath = ''
     let currentId = ''
     let previewUrl: string | null = null
+    let unlockedPassword: string | undefined
+    let liveExchangeId: string | null = null
+    let adding = false
+    let refreshTimer: number | undefined
 
     function resetPreview() {
         if (previewUrl) {
@@ -143,6 +164,7 @@ export const DownloadPage = () => {
         show(passwordWrap, false)
         show(passwordError, false)
         show(collectionFiles, false)
+        show(liveAddWrap, false)
         collectionFiles.clear()
         heading.text(t('loading'))
         meta.text('')
@@ -160,20 +182,18 @@ export const DownloadPage = () => {
 
             // Hide password controls after the supplied password has been accepted.
             show(passwordWrap, false)
-            const expiresAt = Number(new URLSearchParams(window.location.search).get('expires'))
-            const expiryDate = new Date(expiresAt * 1000).toLocaleString(languageLocale())
+            if (password) unlockedPassword = password
+            const expiryDate = linkExpiryDate()
 
             if ('files' in file) {
                 heading.text(t('chooseFile'))
-                const totalSize = file.files.reduce((total, item) => total + item.size, 0)
-                meta.text(`${fileSize(totalSize)} · ${t('linkExpiresAt', { date: expiryDate })}`)
-                collectionFiles.render(file.id, file.files, password)
-                show(collectionFiles, true)
+                showCollection(file, password)
                 return
             }
 
             heading.text(file.fileName)
             meta.text(`${fileSize(file.size)} · ${t('linkExpiresAt', { date: expiryDate })}`)
+            liveExchangeId = null
 
             const query = new URLSearchParams(window.location.search)
             if (password) query.set('password', password)
@@ -201,12 +221,41 @@ export const DownloadPage = () => {
         }
     }
 
+    // When the link stops working, from the expiry signed into it.
+    function linkExpiryDate(): string {
+        const expiresAt = Number(new URLSearchParams(window.location.search).get('expires'))
+        return new Date(expiresAt * 1000).toLocaleString(languageLocale())
+    }
+
+    // The files in a link that holds several, and the add box when it is live.
+    function showCollection(file: CollectionInfo, password?: string) {
+        const totalSize = file.files.reduce((total, item) => total + item.size, 0)
+        meta.text(`${fileSize(totalSize)} · ${t('linkExpiresAt', { date: linkExpiryDate() })}`)
+        liveExchangeId = file.live ? file.id : null
+        show(liveAddWrap, file.live)
+        collectionFiles.render(file.id, file.files, password)
+        show(collectionFiles, true)
+    }
+
+    // Picks up files that others added, without blanking the page first.
+    async function refreshCollection(id: string) {
+        const file = await fileInfo(id, unlockedPassword).catch(() => null)
+        if (file && 'files' in file) showCollection(file, unlockedPassword)
+    }
+
     // The router hands the page a fresh `enter` event every time someone
     // navigates here, with the :id from the address bar in params.
     page.on('enter', async ({ params }: IRouteEvent) => {
         // Every viewer, including the uploader's own Open action, must unlock protected files.
         await loadFile(params.id)
+        // Others may add files to a live link, so its list refreshes while the page is open.
+        window.clearInterval(refreshTimer)
+        refreshTimer = window.setInterval(() => {
+            if (liveExchangeId && !adding) void refreshCollection(liveExchangeId)
+        }, 5 * 60 * 1000)
     })
+
+    page.on('exit', () => window.clearInterval(refreshTimer))
 
     unlockButton.on('click', async () => {
         const password = passwordInput.value().trim()
@@ -216,6 +265,7 @@ export const DownloadPage = () => {
             return
         }
         show(passwordError, false)
+        unlockedPassword = password
         await loadFile(currentId || (new URL(location.href).pathname.split('/').pop() ?? ''), password)
     })
 
@@ -224,6 +274,42 @@ export const DownloadPage = () => {
         // the browser follows it to the storage, and the download bar appears
         // like it would for any other link.
         window.location.href = downloadPath
+    })
+
+    // Sends the files one after another into the open link. A failure is kept
+    // and shown at the end, so a later file's progress cannot hide it.
+    liveAddZone.on('files', async (files: File[]) => {
+        const id = liveExchangeId
+        if (!id || adding) return
+        const params = new URLSearchParams(window.location.search)
+        const expires = params.get('expires')
+        const signature = params.get('signature')
+        if (!expires || !signature) {
+            liveAddStatus.text(t('linkIncomplete'))
+            return
+        }
+
+        adding = true
+        liveAddZone.setDisabled(true)
+        liveAddStatus.removeClass('error')
+        const failures: string[] = []
+        const onStatus = (message: string) => liveAddStatus.text(translateUploadStatus(message))
+        for (const file of files) {
+            liveAddStatus.text(t('addingFile', { name: file.name }))
+            try {
+                const token = await sendFile(file, { onStatus, onProgress: () => undefined })
+                // The link's own deadline replaces the expiry given here.
+                await finishFile(file, token, onStatus, '1h', unlockedPassword, { id, expires, signature })
+            } catch (problem) {
+                failures.push(`${t('fileNotAdded', { name: file.name })} ${problem instanceof Error ? problem.message : ''}`.trim())
+            }
+        }
+
+        await refreshCollection(id)
+        liveAddStatus.text(failures.length ? failures.join(' ') : t('filesAdded'))
+        liveAddStatus.toggleClass('error', failures.length > 0)
+        adding = false
+        liveAddZone.setDisabled(!liveAddTerms.accepted())
     })
 
     return page

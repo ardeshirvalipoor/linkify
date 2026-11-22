@@ -16,6 +16,7 @@ export interface CollectionInfo {
     id: string
     files: FileInfo[]
     protected: boolean
+    live: boolean
 }
 
 // A finished file, with the revocation token that came back when it finished.
@@ -24,10 +25,11 @@ export interface CollectionMember {
     revocationToken: string
 }
 
-export async function create(members: CollectionMember[]): Promise<{ id: string; url: string; revocationToken: string }> {
+// A live link holds even one file, because others may add more to it later.
+export async function create(members: CollectionMember[], live: boolean): Promise<{ id: string; url: string; revocationToken: string }> {
     const ids = members.map(member => member.id)
-    if (ids.length < 2 || ids.length > MAX_FILES_PER_LINK || new Set(ids).size !== ids.length) {
-        throw new HttpError(400, `A share link holds from 2 to ${MAX_FILES_PER_LINK} different files`)
+    if (ids.length < 1 || ids.length > MAX_FILES_PER_LINK || new Set(ids).size !== ids.length) {
+        throw new HttpError(400, `A share link holds from 1 to ${MAX_FILES_PER_LINK} different files`)
     }
 
     const id = newFileId()
@@ -35,7 +37,7 @@ export async function create(members: CollectionMember[]): Promise<{ id: string;
     const expiresAt = await db.createShareCollection(id, members.map(member => ({
         id: member.id,
         revocationTokenHash: hashRevocationToken(member.revocationToken)
-    })), hashRevocationToken(revocationToken))
+    })), hashRevocationToken(revocationToken), live)
     if (!expiresAt) throw new HttpError(400, 'These files cannot share one link')
 
     return { id, url: createShareLink(id, Math.floor(expiresAt.getTime() / 1000)), revocationToken }
@@ -52,6 +54,7 @@ export async function info(id: string, password?: string): Promise<CollectionInf
     return {
         id,
         protected: isProtected,
+        live: collection.live,
         files: files.map(file => ({
             id: file.id,
             fileName: file.fileName,
@@ -72,6 +75,29 @@ export async function downloadUrl(id: string, fileId: string, expiry: unknown, s
     const file = (await liveFiles(collection, password)).find(file => file.id === fileId)
     if (!file) throw new HttpError(404, 'This file is not in this share link')
     return countedDownloadUrl(file.id, file.fileName, visitor)
+}
+
+// The live link a new file wants to join, after the checks a visitor gets. The
+// upload asks this before it glues the file's parts together.
+export async function joinable(id: string, expiry: unknown, signature: unknown, password?: string): Promise<db.ShareCollectionRow> {
+    verifyShareLink(id, expiry, signature)
+
+    const collection = await db.findShareCollection(id)
+    if (!collection) throw new HttpError(404, 'This share link does not hold several files')
+    if (collection.revokedAt) throw new HttpError(410, 'This share link has been revoked')
+    if (collection.expiresAt.getTime() <= Date.now()) throw new HttpError(410, 'This share link has expired')
+    if (!collection.live) throw new HttpError(403, 'This share link does not accept new files')
+    requirePassword(collection.passwordHash, password)
+    return collection
+}
+
+// Puts a finished file into the link. The link may have filled up or closed
+// since joinable() said yes. The file then keeps the link's deadline, so the
+// cleanup still removes it.
+export async function add(collection: db.ShareCollectionRow, fileId: string): Promise<void> {
+    if (!await db.addShareCollectionFile(collection.id, fileId, collection.passwordHash, MAX_FILES_PER_LINK)) {
+        throw new HttpError(409, 'This share link is full or no longer accepts files')
+    }
 }
 
 // True when the id and token belong to a collection, which is now revoked.

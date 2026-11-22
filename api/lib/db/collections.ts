@@ -9,6 +9,7 @@ export interface ShareCollectionRow {
     expiresAt: Date
     passwordHash: string | null
     revokedAt: Date | null
+    live: boolean
 }
 
 export interface ShareCollectionFileRow {
@@ -32,7 +33,9 @@ export interface CollectionMember {
 // The link lasts as long as its newest file, and the older files are kept until
 // then, so the link gets the whole lifetime the uploader chose. Each file's own
 // link still stops on time, because its expiry is signed into it.
-export async function createShareCollection(id: string, members: CollectionMember[], revocationTokenHash: string): Promise<Date | null> {
+//
+// A live link also lets anyone who has it add files later.
+export async function createShareCollection(id: string, members: CollectionMember[], revocationTokenHash: string, live: boolean): Promise<Date | null> {
     const ids = members.map(member => member.id)
 
     return sql.begin(async transaction => {
@@ -54,8 +57,8 @@ export async function createShareCollection(id: string, members: CollectionMembe
         const expiresAt = new Date(Math.max(...rows.map(row => row.expires_at.getTime())))
 
         await transaction`
-            insert into share_collections (id, expires_at, password_hash, revocation_token_hash)
-            values (${id}, ${expiresAt}, ${passwordHash}, ${revocationTokenHash})
+            insert into share_collections (id, expires_at, password_hash, revocation_token_hash, live)
+            values (${id}, ${expiresAt}, ${passwordHash}, ${revocationTokenHash}, ${live})
         `
         await transaction`
             insert into share_collection_files
@@ -73,7 +76,7 @@ export async function createShareCollection(id: string, members: CollectionMembe
 // The collection at this id, revoked or not. The id of a single file answers null.
 export async function findShareCollection(id: string): Promise<ShareCollectionRow | null> {
     const [row] = await sql`
-        select id, expires_at, password_hash, revoked_at
+        select id, expires_at, password_hash, revoked_at, live
         from share_collections
         where id = ${id}
     `
@@ -82,7 +85,8 @@ export async function findShareCollection(id: string): Promise<ShareCollectionRo
         id: row.id,
         expiresAt: row.expires_at,
         passwordHash: row.password_hash,
-        revokedAt: row.revoked_at
+        revokedAt: row.revoked_at,
+        live: row.live
     }
 }
 
@@ -127,5 +131,45 @@ export async function revokeShareCollection(id: string, revocationTokenHash: str
             )
         `
         return true
+    })
+}
+
+// Adds one finished file to a live collection that is not full. The file takes
+// the collection's password and deadline, so the whole link expires together.
+// Locking the collection's row makes two files added at once queue up, so they
+// never take the same position or push the link past its limit.
+export async function addShareCollectionFile(
+    collectionId: string,
+    fileId: string,
+    passwordHash: string | null,
+    maxFiles: number
+): Promise<{ expiresAt: Date } | null> {
+    return sql.begin(async transaction => {
+        const [collection] = await transaction`
+            select id, expires_at, password_hash
+            from share_collections
+            where id = ${collectionId} and live and revoked_at is null and expires_at > now()
+            for update
+        `
+        if (!collection || collection.password_hash !== passwordHash) return null
+
+        const [held] = await transaction`
+            select count(*)::int as count, coalesce(max(position), -1) + 1 as position
+            from share_collection_files
+            where collection_id = ${collectionId}
+        `
+        if (held.count >= maxFiles) return null
+
+        await transaction`
+            insert into share_collection_files (collection_id, file_id, position)
+            values (${collectionId}, ${fileId}, ${held.position})
+            on conflict (collection_id, file_id) do nothing
+        `
+        await transaction`
+            update files
+            set password_hash = ${passwordHash}, expires_at = ${collection.expires_at}
+            where id = ${fileId} and status = 'ready' and deleted_at is null and revoked_at is null
+        `
+        return { expiresAt: collection.expires_at }
     })
 }
