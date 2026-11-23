@@ -31,6 +31,17 @@ export async function preview(req: Request<{ id: string }>, res: Response) {
     res.redirect(302, await services.files.previewUrl(req.params.id, req.query.expires, req.query.signature, password))
 }
 
+// Counting a page view is separate from download redirects and media previews.
+export async function recordView(req: Request<{ id: string }>, res: Response) {
+    const visitor = { address: req.ip ?? '', userAgent: req.get('user-agent') ?? null }
+    await services.files.recordView(req.params.id, req.query.expires, req.query.signature, visitor)
+    res.status(204).end()
+}
+
+export async function analytics(req: Request<{ id: string }>, res: Response) {
+    res.json(await services.files.analytics(req.params.id, req.query.expires, req.query.signature))
+}
+
 // POST /api/files/:id/revoke
 export async function revoke(req: Request<{ id: string }>, res: Response) {
     const result = revokeSchema.safeParse(req.body)

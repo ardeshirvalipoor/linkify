@@ -161,3 +161,77 @@ export async function recordDownload(id: string, ipHash: string, userAgent: stri
         where id = ${id}
     `
 }
+
+export interface LinkAnalytics {
+    views: number
+    uniqueVisitors: number
+    downloads: number
+    expiresAt: Date
+}
+
+export async function recordLinkView(id: string, ipHash: string): Promise<void> {
+    await sql`
+        insert into link_views (link_id, ip_hash)
+        values (${id}, ${ipHash})
+    `
+}
+
+export async function linkAnalytics(id: string): Promise<LinkAnalytics | null> {
+    const [collection] = await sql`
+        select id, expires_at
+        from share_collections
+        where id = ${id}
+    `
+
+    if (collection) {
+        const [row] = await sql`
+            with member_downloads as (
+                select downloads.ip_hash
+                from downloads
+                join share_collection_files on share_collection_files.file_id = downloads.file_id
+                where share_collection_files.collection_id = ${id}
+            ),
+            visitors as (
+                select ip_hash from link_views where link_id = ${id}
+                union all
+                select ip_hash from member_downloads
+            )
+            select
+                (select count(*)::int from link_views where link_id = ${id}) as views,
+                (select count(*)::int from (select distinct ip_hash from visitors where ip_hash is not null) as distinct_visitors) as unique_visitors,
+                (select count(*)::int from member_downloads) as downloads
+        `
+        if (!row) return null
+        return {
+            views: row.views,
+            uniqueVisitors: row.unique_visitors,
+            downloads: row.downloads,
+            expiresAt: collection.expires_at
+        }
+    }
+
+    const [file] = await sql`
+        select id, expires_at
+        from files
+        where id = ${id} and status = 'ready' and deleted_at is null
+    `
+    if (!file) return null
+
+    const [row] = await sql`
+        with visitors as (
+            select ip_hash from link_views where link_id = ${id}
+            union all
+            select ip_hash from downloads where file_id = ${id}
+        )
+        select
+            (select count(*)::int from link_views where link_id = ${id}) as views,
+            (select count(*)::int from (select distinct ip_hash from visitors where ip_hash is not null) as distinct_visitors) as unique_visitors,
+            (select count(*)::int from downloads where file_id = ${id}) as downloads
+    `
+    return {
+        views: row.views,
+        uniqueVisitors: row.unique_visitors,
+        downloads: row.downloads,
+        expiresAt: file.expires_at
+    }
+}

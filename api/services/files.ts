@@ -8,7 +8,31 @@ import { HttpError } from '../lib/http-error'
 import { verifyShareLink } from '../lib/share-link'
 import { hashRevocationToken } from '../lib/share-revocation'
 import * as collections from './collections'
-import { countedDownloadUrl, FileInfo, previewContentType, requirePassword, Visitor } from './file-access'
+import { countedDownloadUrl, FileInfo, previewContentType, requirePassword, Visitor, hashAddress } from './file-access'
+
+export interface LinkAnalytics {
+    views: number
+    uniqueVisitors: number
+    downloads: number
+    expiresAt: string
+}
+
+export async function recordView(id: string, expiry: unknown, signature: unknown, visitor: Visitor): Promise<void> {
+    verifyShareLink(id, expiry, signature)
+    await db.recordLinkView(id, hashAddress(visitor.address))
+}
+
+export async function analytics(id: string, expiry: unknown, signature: unknown): Promise<LinkAnalytics> {
+    verifyShareLink(id, expiry, signature)
+    const result = await db.linkAnalytics(id)
+    if (!result) throw new HttpError(404, 'This link does not have analytics')
+    return {
+        views: result.views,
+        uniqueVisitors: result.uniqueVisitors,
+        downloads: result.downloads,
+        expiresAt: result.expiresAt.toISOString()
+    }
+}
 
 // What the download page shows before anyone commits to a one gigabyte download.
 // A link can also hold several files, and then the answer lists them.

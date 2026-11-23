@@ -7,6 +7,8 @@ export const fileRoutes = Router()
 fileRoutes.post('/collections', handlers.collections.create)
 fileRoutes.get('/:id', handlers.files.info)
 fileRoutes.post('/:id/revoke', handlers.files.revoke)
+fileRoutes.post('/:id/view', handlers.files.recordView)
+fileRoutes.get('/:id/analytics', handlers.files.analytics)
 // Keep inline previews separate from downloads so page visits are not counted.
 fileRoutes.get('/:id/preview', handlers.files.preview)
 fileRoutes.get('/:id/download', handlers.files.download)
