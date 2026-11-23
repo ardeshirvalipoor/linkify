@@ -40,5 +40,7 @@ export const tr: Dictionary = {
     letOthersAdd: 'Bağlantıya sahip herkes dosya ekleyebilsin', addFilesTitle: 'Bu bağlantıya dosya ekle',
     addFilesDrop: 'Dosya seçin veya buraya bırakın', addFilesHint: 'Dosya başına en fazla 1 GB. Bu bağlantıya sahip herkes görebilir.',
     addingFile: '{name} ekleniyor', filesAdded: 'Dosyalar eklendi', fileNotAdded: '{name} eklenemedi.',
-    linkIncomplete: 'Bu bağlantı eksik. Bağlantının tamamını yeniden açın.'
+    linkIncomplete: 'Bu bağlantı eksik. Bağlantının tamamını yeniden açın.',
+    analytics: 'Analitik', analyticsLoading: 'Analitikler yükleniyor...', analyticsUnavailable: 'Analitikler kullanılamıyor.',
+    analyticsViews: 'Görüntülenme', analyticsUniqueVisitors: 'Tekil ziyaretçi', analyticsDownloads: 'İndirme', analyticsTimeLeft: 'Kalan süre'
 }

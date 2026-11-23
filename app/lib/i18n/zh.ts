@@ -39,5 +39,7 @@ export const zh: Dictionary = {
     letOthersAdd: '允许任何拥有链接的人添加文件', addFilesTitle: '向此链接添加文件',
     addFilesDrop: '选择文件或拖放到此处', addFilesHint: '每个文件最大 1 GB。拥有此链接的人都能看到。',
     addingFile: '正在添加 {name}', filesAdded: '文件已添加', fileNotAdded: '无法添加 {name}。',
-    linkIncomplete: '此链接不完整。请重新打开完整链接。'
+    linkIncomplete: '此链接不完整。请重新打开完整链接。',
+    analytics: '分析', analyticsLoading: '正在加载分析...', analyticsUnavailable: '无法获取分析数据。',
+    analyticsViews: '查看次数', analyticsUniqueVisitors: '独立访客', analyticsDownloads: '下载次数', analyticsTimeLeft: '剩余时间'
 }

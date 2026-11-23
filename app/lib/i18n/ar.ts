@@ -39,5 +39,7 @@ export const ar: Dictionary = {
     letOthersAdd: 'السماح لأي شخص لديه الرابط بإضافة ملفات', addFilesTitle: 'أضف ملفات إلى هذا الرابط',
     addFilesDrop: 'اختر ملفات أو أسقطها هنا', addFilesHint: 'حتى 1 غيغابايت لكل ملف. سيراها كل من لديه هذا الرابط.',
     addingFile: 'جارٍ إضافة {name}', filesAdded: 'تمت إضافة الملفات', fileNotAdded: 'تعذرت إضافة {name}.',
-    linkIncomplete: 'هذا الرابط غير مكتمل. افتح الرابط الكامل مرة أخرى.'
+    linkIncomplete: 'هذا الرابط غير مكتمل. افتح الرابط الكامل مرة أخرى.',
+    analytics: 'التحليلات', analyticsLoading: 'جار تحميل التحليلات...', analyticsUnavailable: 'التحليلات غير متاحة.',
+    analyticsViews: 'المشاهدات', analyticsUniqueVisitors: 'الزوار الفريدون', analyticsDownloads: 'التنزيلات', analyticsTimeLeft: 'الوقت المتبقي'
 }

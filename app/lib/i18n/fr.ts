@@ -39,5 +39,7 @@ export const fr: Dictionary = {
     letOthersAdd: 'Permettre à toute personne ayant le lien d’ajouter des fichiers', addFilesTitle: 'Ajouter des fichiers à ce lien',
     addFilesDrop: 'Choisissez des fichiers ou déposez-les ici', addFilesHint: 'Jusqu’à 1 Go chacun. Toute personne ayant ce lien les verra.',
     addingFile: 'Ajout de {name}', filesAdded: 'Fichiers ajoutés', fileNotAdded: 'Impossible d’ajouter {name}.',
-    linkIncomplete: 'Ce lien est incomplet. Ouvrez à nouveau le lien complet.'
+    linkIncomplete: 'Ce lien est incomplet. Ouvrez à nouveau le lien complet.',
+    analytics: 'Statistiques', analyticsLoading: 'Chargement des statistiques...', analyticsUnavailable: 'Les statistiques ne sont pas disponibles.',
+    analyticsViews: 'Vues', analyticsUniqueVisitors: 'Visiteurs uniques', analyticsDownloads: 'Téléchargements', analyticsTimeLeft: 'Temps restant'
 }

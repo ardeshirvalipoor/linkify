@@ -33,7 +33,9 @@ export const en = {
     letOthersAdd: 'Let anyone with the link add files', addFilesTitle: 'Add files to this link',
     addFilesDrop: 'Choose files or drop them here', addFilesHint: 'Up to 1 GB each. Everyone with this link will see them.',
     addingFile: 'Adding {name}', filesAdded: 'Files added', fileNotAdded: '{name} could not be added.',
-    linkIncomplete: 'This link is incomplete. Open the full link again.'
+    linkIncomplete: 'This link is incomplete. Open the full link again.',
+    analytics: 'Analytics', analyticsLoading: 'Loading analytics...', analyticsUnavailable: 'Analytics are unavailable.',
+    analyticsViews: 'Views', analyticsUniqueVisitors: 'Unique visitors', analyticsDownloads: 'Downloads', analyticsTimeLeft: 'Time left'
 }
 
 export type TranslationKey = keyof typeof en

@@ -56,6 +56,13 @@ export interface CollectionInfo {
 
 export type ShareInfo = FileInfo | CollectionInfo
 
+export interface LinkAnalytics {
+    views: number
+    uniqueVisitors: number
+    downloads: number
+    expiresAt: string
+}
+
 export async function startUpload(file: File): Promise<StartedUpload> {
     return unwrap<StartedUpload>(await http.post('/api/uploads', {
         fileName: file.name,
@@ -93,6 +100,14 @@ export async function finishUpload(
 
 export async function revokeShareLink(id: string, revocationToken: string): Promise<void> {
     unwrap(await http.post(`/api/files/${id}/revoke`, { revocationToken }))
+}
+
+export async function recordLinkView(id: string, shareUrl: URL): Promise<void> {
+    unwrap(await http.post(`/api/files/${id}/view?${shareUrl.searchParams.toString()}`))
+}
+
+export async function getLinkAnalytics(id: string, shareUrl: URL): Promise<LinkAnalytics> {
+    return unwrap<LinkAnalytics>(await http.get(`/api/files/${id}/analytics?${shareUrl.searchParams.toString()}`))
 }
 
 // Joins finished files into one link. Each file's own revocation token proves

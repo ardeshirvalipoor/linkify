@@ -127,7 +127,7 @@ export const UploadPage = () => {
     const toast = Toast()
 
     card.append(heading, intro, expiry, password, live, dropZone, queueList, preview, fileRow, resumeNote, actions, terms, progress, status, share, expirySummary, error, endActions)
-    page.append(createSiteNavigation(), createPreferencesBar(), card, Benefits(), About(), share.dialog, revoke.dialog)
+    page.append(createSiteNavigation(), createPreferencesBar(), card, Benefits(), About(), share.dialog, share.analyticsDialog, revoke.dialog)
 
     // --- state ---------------------------------------------------------------
 

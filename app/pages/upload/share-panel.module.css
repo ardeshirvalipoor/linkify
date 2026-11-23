@@ -7,6 +7,8 @@
 .actions {
     display: flex;
     align-items: stretch;
+    flex-wrap: wrap;
+    justify-content: flex-end;
     gap: 8px;
     flex-shrink: 0;
 }
@@ -47,6 +49,34 @@ button.qrButton {
     border-radius: 12px;
     background: var(--surface);
     box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.analyticsGrid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(120px, 1fr));
+    gap: 10px;
+    width: 100%;
+}
+
+.analyticsMetric {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-height: 82px;
+    padding: 14px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--field);
+    text-align: center;
+}
+
+.analyticsMetric strong {
+    font-size: 22px;
+}
+
+.analyticsMetric span {
+    color: var(--muted);
+    font-size: 12px;
 }
 
 @media (max-width: 560px) {

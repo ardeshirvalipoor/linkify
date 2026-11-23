@@ -40,5 +40,7 @@ export const ja: Dictionary = {
     letOthersAdd: 'リンクを知っている人なら誰でもファイルを追加できるようにする', addFilesTitle: 'このリンクにファイルを追加',
     addFilesDrop: 'ファイルを選択するか、ここにドロップ', addFilesHint: '1 ファイルあたり 1 GB まで。このリンクを持つ全員に表示されます。',
     addingFile: '{name} を追加しています', filesAdded: 'ファイルを追加しました', fileNotAdded: '{name} を追加できませんでした。',
-    linkIncomplete: 'このリンクは不完全です。完全なリンクをもう一度開いてください。'
+    linkIncomplete: 'このリンクは不完全です。完全なリンクをもう一度開いてください。',
+    analytics: 'アナリティクス', analyticsLoading: 'アナリティクスを読み込み中...', analyticsUnavailable: 'アナリティクスを利用できません。',
+    analyticsViews: '閲覧数', analyticsUniqueVisitors: 'ユニーク訪問者', analyticsDownloads: 'ダウンロード', analyticsTimeLeft: '残り時間'
 }

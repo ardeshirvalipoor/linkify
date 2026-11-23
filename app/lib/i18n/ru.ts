@@ -40,5 +40,7 @@ export const ru: Dictionary = {
     letOthersAdd: 'Разрешить всем, у кого есть ссылка, добавлять файлы', addFilesTitle: 'Добавить файлы по этой ссылке',
     addFilesDrop: 'Выберите или перетащите файлы сюда', addFilesHint: 'До 1 ГБ каждый. Их увидят все, у кого есть эта ссылка.',
     addingFile: 'Добавляем {name}', filesAdded: 'Файлы добавлены', fileNotAdded: 'Не удалось добавить {name}.',
-    linkIncomplete: 'Ссылка неполная. Откройте полную ссылку ещё раз.'
+    linkIncomplete: 'Ссылка неполная. Откройте полную ссылку ещё раз.',
+    analytics: 'Аналитика', analyticsLoading: 'Загрузка аналитики...', analyticsUnavailable: 'Аналитика недоступна.',
+    analyticsViews: 'Просмотры', analyticsUniqueVisitors: 'Уникальные посетители', analyticsDownloads: 'Скачивания', analyticsTimeLeft: 'Осталось времени'
 }

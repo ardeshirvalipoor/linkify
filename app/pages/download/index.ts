@@ -7,7 +7,7 @@
 import { Base, Button, Div, H1, Input, P, Page, IRouteEvent } from '@codesuma/baseline'
 import { DropZone } from '../../components/drop-zone'
 import { TermsField } from '../../components/terms-field'
-import { CollectionInfo, fileInfo } from '../../lib/api'
+import { CollectionInfo, fileInfo, getLinkAnalytics, recordLinkView } from '../../lib/api'
 import { fileSize } from '../../lib/format'
 import { languageLocale, t, translateUploadStatus } from '../../lib/i18n'
 import { createPreferencesBar } from '../../lib/preferences'
@@ -100,7 +100,11 @@ export const DownloadPage = () => {
     const error = P('')
     error.addClass('error')
 
-    card.append(heading, meta, previewWrap, collectionFiles, passwordWrap, liveAddWrap, actions, error)
+    const analytics = P('')
+    analytics.addClass('note')
+    show(analytics, false)
+
+    card.append(heading, meta, previewWrap, collectionFiles, passwordWrap, liveAddWrap, actions, analytics, error)
     page.append(siteNavigation, preferencesBar, card)
 
     let downloadPath = ''
@@ -110,6 +114,23 @@ export const DownloadPage = () => {
     let liveExchangeId: string | null = null
     let adding = false
     let refreshTimer: number | undefined
+    let viewRecordedId: string | null = null
+
+    async function refreshAnalytics(id: string) {
+        const shareUrl = new URL(window.location.href)
+        try {
+            const result = await getLinkAnalytics(id, shareUrl)
+            const remaining = Math.max(0, result.expiresAt ? new Date(result.expiresAt).getTime() - Date.now() : 0)
+            const minutes = Math.ceil(remaining / 60000)
+            const timeLeft = minutes >= 60
+                ? `${Math.floor(minutes / 60)}h ${minutes % 60}m`
+                : `${minutes}m`
+            analytics.text(`${result.views} views · ${result.uniqueVisitors} unique visitors · ${result.downloads} downloads · ${timeLeft} left`)
+            show(analytics, true)
+        } catch {
+            show(analytics, false)
+        }
+    }
 
     function resetPreview() {
         if (previewUrl) {
@@ -248,6 +269,11 @@ export const DownloadPage = () => {
     page.on('enter', async ({ params }: IRouteEvent) => {
         // Every viewer, including the uploader's own Open action, must unlock protected files.
         await loadFile(params.id)
+        if (viewRecordedId !== params.id) {
+            viewRecordedId = params.id
+            await recordLinkView(params.id, new URL(window.location.href)).catch(() => undefined)
+        }
+        void refreshAnalytics(params.id)
         // Others may add files to a live link, so its list refreshes while the page is open.
         window.clearInterval(refreshTimer)
         refreshTimer = window.setInterval(() => {
