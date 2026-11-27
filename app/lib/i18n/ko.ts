@@ -40,5 +40,7 @@ export const ko: Dictionary = {
     letOthersAdd: '링크가 있는 누구나 파일을 추가할 수 있게 하기', addFilesTitle: '이 링크에 파일 추가',
     addFilesDrop: '파일을 선택하거나 여기에 놓으세요', addFilesHint: '파일당 최대 1GB. 이 링크가 있는 모든 사람이 볼 수 있습니다.',
     addingFile: '{name} 추가 중', filesAdded: '파일을 추가했습니다', fileNotAdded: '{name}을(를) 추가하지 못했습니다.',
-    linkIncomplete: '링크가 불완전합니다. 전체 링크를 다시 열어 주세요.'
+    linkIncomplete: '링크가 불완전합니다. 전체 링크를 다시 열어 주세요.',
+    analytics: '분석', analyticsLoading: '분석을 불러오는 중...', analyticsUnavailable: '분석 정보를 사용할 수 없습니다.',
+    analyticsViews: '조회수', analyticsUniqueVisitors: '고유 방문자', analyticsDownloads: '다운로드', analyticsTimeLeft: '남은 시간'
 }

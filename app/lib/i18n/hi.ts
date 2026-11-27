@@ -39,5 +39,7 @@ export const hi: Dictionary = {
     letOthersAdd: 'लिंक वाले किसी भी व्यक्ति को फ़ाइलें जोड़ने दें', addFilesTitle: 'इस लिंक में फ़ाइलें जोड़ें',
     addFilesDrop: 'फ़ाइलें चुनें या यहाँ छोड़ें', addFilesHint: 'हर फ़ाइल 1 GB तक। इस लिंक वाले सभी लोग इन्हें देखेंगे।',
     addingFile: '{name} जोड़ी जा रही है', filesAdded: 'फ़ाइलें जोड़ दी गईं', fileNotAdded: '{name} नहीं जोड़ी जा सकी।',
-    linkIncomplete: 'यह लिंक अधूरा है। पूरा लिंक फिर से खोलें।'
+    linkIncomplete: 'यह लिंक अधूरा है। पूरा लिंक फिर से खोलें।',
+    analytics: 'एनालिटिक्स', analyticsLoading: 'एनालिटिक्स लोड हो रही है...', analyticsUnavailable: 'एनालिटिक्स उपलब्ध नहीं हैं.',
+    analyticsViews: 'व्यूज़', analyticsUniqueVisitors: 'यूनीक विज़िटर', analyticsDownloads: 'डाउनलोड', analyticsTimeLeft: 'बचा समय'
 }

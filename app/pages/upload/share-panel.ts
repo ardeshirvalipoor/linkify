@@ -1,9 +1,10 @@
 // The finished link: a box to copy it from, and buttons to copy it, open it,
 // preview the file, or show the link as a QR code for a phone to scan.
 
-import { Base, Button, Div, Input, waitFor } from '@codesuma/baseline'
+import { Base, Button, Div, Input, P, waitFor } from '@codesuma/baseline'
 import { toDataURL } from 'qrcode'
 import { t } from '../../lib/i18n'
+import { getLinkAnalytics } from '../../lib/api'
 import { show } from '../../lib/show'
 import { storeUploaderPassword } from '../../lib/uploader-password'
 import { Dialog } from './dialog'
@@ -30,9 +31,12 @@ export const SharePanel = (onError: (message: string) => void) => {
     qrButton.el.title = t('qrCodeTitle')
     qrButton.el.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M3 3h7v7H3zM5 5v3h3V5zM14 3h7v7h-7zM16 5v3h3V5zM3 14h7v7H3zM5 16v3h3v-3z"/><path d="M13 13h3v3h-3zM18 13h3v2h-3zM17 16h2v2h-2zM13 18h2v3h-2zM16 19h2v2h-2zM20 17h1v4h-1z"/></svg>'
 
+    const analyticsButton = Button(t('analytics'))
+    analyticsButton.addClass('button', 'secondary')
+
     const actions = Div()
     actions.addClass(styles.actions)
-    actions.append(copyButton, openButton, previewButton, qrButton)
+    actions.append(copyButton, openButton, previewButton, analyticsButton, qrButton)
 
     const base = Div()
     base.addClass(styles.row)
@@ -47,6 +51,15 @@ export const SharePanel = (onError: (message: string) => void) => {
     const qrClose = Button(t('close'))
     qrClose.addClass('button', 'secondary')
     qrDialog.panel.append(qrImage, qrClose)
+
+    const analyticsDialog = Dialog(t('analytics'))
+    const analyticsStatus = P('')
+    analyticsStatus.addClass('note')
+    const analyticsGrid = Div()
+    analyticsGrid.addClass(styles.analyticsGrid)
+    const analyticsClose = Button(t('close'))
+    analyticsClose.addClass('button', 'secondary')
+    analyticsDialog.panel.append(analyticsStatus, analyticsGrid, analyticsClose)
 
     let link = ''
 
@@ -109,10 +122,52 @@ export const SharePanel = (onError: (message: string) => void) => {
     })
 
     qrClose.on('click', qrDialog.close)
+    analyticsClose.on('click', analyticsDialog.close)
+
+    analyticsButton.on('click', async () => {
+        if (!link) return
+        const shareUrl = new URL(link)
+        const match = /^\/f\/([^/]+)$/.exec(shareUrl.pathname)
+        if (!match) return
+
+        analyticsStatus.text(t('analyticsLoading'))
+        analyticsGrid.el.replaceChildren()
+        analyticsDialog.open()
+        try {
+            const result = await getLinkAnalytics(match[1], shareUrl)
+            const remaining = Math.max(0, new Date(result.expiresAt).getTime() - Date.now())
+            const minutes = Math.ceil(remaining / 60000)
+            const timeLeft = minutes >= 60
+                ? `${Math.floor(minutes / 60)}h ${minutes % 60}m`
+                : `${minutes}m`
+            analyticsStatus.text('')
+            analyticsGrid.append(
+                analyticsMetric(t('analyticsViews'), String(result.views)),
+                analyticsMetric(t('analyticsUniqueVisitors'), String(result.uniqueVisitors)),
+                analyticsMetric(t('analyticsDownloads'), String(result.downloads)),
+                analyticsMetric(t('analyticsTimeLeft'), timeLeft)
+            )
+        } catch (problem) {
+            analyticsGrid.el.replaceChildren()
+            analyticsStatus.text(problem instanceof Error ? problem.message : t('analyticsUnavailable'))
+        }
+    })
+
+    function analyticsMetric(label: string, value: string) {
+        const metric = Div()
+        metric.addClass(styles.analyticsMetric)
+        const number = Base('strong')
+        number.text(value)
+        const name = Base('span')
+        name.text(label)
+        metric.append(number, name)
+        return metric
+    }
 
     return Object.assign(base, {
         // The page puts the dialog at its top level, over everything else.
         dialog: qrDialog,
+        analyticsDialog,
         // A link that holds several files has no preview page of its own.
         setLink(url: string, previewable: boolean) {
             link = url
@@ -123,6 +178,7 @@ export const SharePanel = (onError: (message: string) => void) => {
             link = ''
             input.setValue('')
             qrDialog.close()
+            analyticsDialog.close()
         }
     })
 }

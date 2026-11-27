@@ -40,5 +40,7 @@ export const pt: Dictionary = {
     letOthersAdd: 'Permitir que qualquer pessoa com a ligação adicione ficheiros', addFilesTitle: 'Adicionar ficheiros a esta ligação',
     addFilesDrop: 'Escolha ficheiros ou largue-os aqui', addFilesHint: 'Até 1 GB cada. Todos os que tiverem esta ligação vão vê-los.',
     addingFile: 'A adicionar {name}', filesAdded: 'Ficheiros adicionados', fileNotAdded: 'Não foi possível adicionar {name}.',
-    linkIncomplete: 'Esta ligação está incompleta. Abra novamente a ligação completa.'
+    linkIncomplete: 'Esta ligação está incompleta. Abra novamente a ligação completa.',
+    analytics: 'Análise', analyticsLoading: 'A carregar análises...', analyticsUnavailable: 'As análises não estão disponíveis.',
+    analyticsViews: 'Visualizações', analyticsUniqueVisitors: 'Visitantes únicos', analyticsDownloads: 'Transferências', analyticsTimeLeft: 'Tempo restante'
 }

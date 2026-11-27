@@ -77,7 +77,7 @@ export function previewContentType(contentType: string, fileName: string): strin
 
 // This hashes the visitor's address before writing a download row, so the
 // database stores only a stable fingerprint and never the raw IP.
-function hashAddress(address: string): string {
+export function hashAddress(address: string): string {
     return createHmac('sha256', config.tokenSecret)
         .update(`linkify-address-v1:${address}`)
         .digest('base64url')
