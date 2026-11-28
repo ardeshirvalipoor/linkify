@@ -149,7 +149,7 @@ export async function deleteExchangeReceivedFile(id: string, fileId: string, rev
 export async function updateExchangeSettings(
     id: string,
     revocationToken: string,
-    settings: { name: string | null; live: boolean; password: string | null; expiresIn: LinkExpiry }
+    settings: { name: string | null; live: boolean; password?: string }
 ): Promise<void> {
     unwrap(await http.post(`/api/files/${id}/settings`, { revocationToken, ...settings }))
 }

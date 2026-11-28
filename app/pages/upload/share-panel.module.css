@@ -132,8 +132,7 @@ button.qrButton {
     font-size: 15px;
 }
 
-.settingsInput,
-.settingsSelect {
+.settingsInput {
     width: 100%;
     min-height: 44px;
     padding: 10px 12px;
@@ -146,14 +145,9 @@ button.qrButton {
     outline: none;
 }
 
-.settingsInput:focus,
-.settingsSelect:focus {
+.settingsInput:focus {
     border-color: var(--brand, #14532d);
     box-shadow: 0 0 0 3px var(--accent-soft);
-}
-
-.settingsSelect {
-    cursor: pointer;
 }
 
 .toggleLabel {

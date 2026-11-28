@@ -8,7 +8,7 @@ import { MAX_FILES_PER_LINK } from '../config'
 import * as db from '../lib/db'
 import { newFileId } from '../lib/file-id'
 import { HttpError } from '../lib/http-error'
-import { createShareLink, verifyShareLink, LinkExpiry } from '../lib/share-link'
+import { createShareLink, verifyShareLink } from '../lib/share-link'
 import { createRevocationToken, hashRevocationToken } from '../lib/share-revocation'
 import { countedDownloadUrl, FileInfo, previewContentType, requirePassword, Visitor } from './file-access'
 import { hashPassword } from '../lib/share-link'
@@ -171,16 +171,10 @@ export async function updateSettings(
     revocationToken: string,
     name: string | null,
     live: boolean,
-    password: string | null,
-    expiresIn: LinkExpiry
+    password?: string
 ): Promise<void> {
     const passwordHash = password ? hashPassword(password) : null
-    const expiresAt = new Date(Date.now() + ({
-        '1h': 60 * 60 * 1000,
-        '1d': 24 * 60 * 60 * 1000,
-        '1w': 7 * 24 * 60 * 60 * 1000
-    } satisfies Record<LinkExpiry, number>)[expiresIn])
-    if (!await db.updateExchangeSettings(id, hashRevocationToken(revocationToken), name, live, passwordHash, expiresAt)) {
+    if (!await db.updateExchangeSettings(id, hashRevocationToken(revocationToken), name, live, passwordHash)) {
         throw new HttpError(404, 'This exchange is not available')
     }
 }

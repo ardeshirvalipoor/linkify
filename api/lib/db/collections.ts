@@ -271,30 +271,32 @@ export async function deleteReceivedExchangeFile(id: string, fileId: string, rev
     })
 }
 
+// A null password hash keeps the password the link has. The lifetime is never
+// changed here, because the link's expiry is signed into its address.
 export async function updateExchangeSettings(
     id: string,
     revocationTokenHash: string,
     name: string | null,
     live: boolean,
-    passwordHash: string | null,
-    expiresAt: Date
+    passwordHash: string | null
 ): Promise<boolean> {
     return sql.begin(async transaction => {
         const [row] = await transaction`
             update share_collections
-            set name = ${name}, live = ${live}, password_hash = ${passwordHash},
-                expires_at = ${expiresAt}
+            set name = ${name}, live = ${live}, password_hash = coalesce(${passwordHash}, password_hash)
             where id = ${id} and revocation_token_hash = ${revocationTokenHash}
             returning id
         `
         if (!row) return false
-        await transaction`
-            update files
-            set password_hash = ${passwordHash}, expires_at = ${expiresAt}
-            where id in (
-                select file_id from share_collection_files where collection_id = ${id}
-            )
-        `
+        if (passwordHash) {
+            await transaction`
+                update files
+                set password_hash = ${passwordHash}
+                where id in (
+                    select file_id from share_collection_files where collection_id = ${id}
+                )
+            `
+        }
         await transaction`
             insert into share_collection_activity (collection_id, action, details)
             values (${id}, 'settings_updated', ${live ? 'Incoming uploads enabled' : 'Incoming uploads closed'})

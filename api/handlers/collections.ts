@@ -24,8 +24,8 @@ const revocationSchema = z.object({
 const settingsSchema = revocationSchema.extend({
     name: z.string().trim().max(100).nullable().optional(),
     live: z.boolean(),
-    password: z.string().trim().min(6).max(128).nullable().optional(),
-    expiresIn: z.enum(['1h', '1d', '1w'])
+    // Left out, the link keeps the password it has.
+    password: z.string().trim().min(6).max(128).optional()
 })
 
 // POST /api/files/collections
@@ -65,8 +65,7 @@ export async function updateSettings(req: Request<{ id: string }>, res: Response
         result.data.revocationToken,
         result.data.name ?? null,
         result.data.live,
-        result.data.password ?? null,
-        result.data.expiresIn
+        result.data.password
     )
     res.status(204).end()
 }

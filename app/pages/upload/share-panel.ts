@@ -11,8 +11,7 @@ import {
     revokeShareLink,
     updateExchangeSettings,
     type ExchangeActivity,
-    type FileInfo,
-    type LinkExpiry
+    type FileInfo
 } from '../../lib/api'
 import { getRevocationToken } from '../../lib/share-revocation'
 import { fileSize } from '../../lib/format'
@@ -118,14 +117,6 @@ export const SharePanel = (onError: (message: string) => void) => {
     const passwordInput = Input('', 'password')
     passwordInput.addClass(styles.settingsInput)
     passwordInput.el.placeholder = t('passwordPlaceholder')
-    const expirySelect = Base('select')
-    expirySelect.addClass(styles.settingsSelect)
-    for (const [value, label] of [['1h', t('hour')], ['1d', t('day')], ['1w', t('week')]] as const) {
-        const option = Base('option')
-        option.el.value = value
-        option.text(label)
-        expirySelect.append(option)
-    }
     const saveSettings = Button(t('saveSettings'))
     saveSettings.addClass('button', 'primary')
     const closeExchange = Button(t('closeExchange'))
@@ -135,7 +126,7 @@ export const SharePanel = (onError: (message: string) => void) => {
 
     const settingsCard = Div()
     settingsCard.addClass(styles.settingsCard)
-    settingsCard.append(settingsTitle, nameInput, liveLabel, passwordInput, expirySelect, saveSettings)
+    settingsCard.append(settingsTitle, nameInput, liveLabel, passwordInput, saveSettings)
     const dashboardActions = Div()
     dashboardActions.addClass(styles.dashboardActions)
     dashboardActions.append(closeExchange, dashboardClose)
@@ -292,8 +283,8 @@ export const SharePanel = (onError: (message: string) => void) => {
             await updateExchangeSettings(dashboardId, token, {
                 name: nameInput.value().trim() || null,
                 live: liveToggle.el.checked,
-                password: password || null,
-                expiresIn: expirySelect.el.value as LinkExpiry
+                // An empty box keeps the password the link has.
+                password: password || undefined
             })
             await refreshDashboard()
         } catch (problem) {
