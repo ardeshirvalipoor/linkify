@@ -42,5 +42,9 @@ export const pt: Dictionary = {
     addingFile: 'A adicionar {name}', filesAdded: 'Ficheiros adicionados', fileNotAdded: 'Não foi possível adicionar {name}.',
     linkIncomplete: 'Esta ligação está incompleta. Abra novamente a ligação completa.',
     analytics: 'Análise', analyticsLoading: 'A carregar análises...', analyticsUnavailable: 'As análises não estão disponíveis.',
-    analyticsViews: 'Visualizações', analyticsUniqueVisitors: 'Visitantes únicos', analyticsDownloads: 'Transferências', analyticsTimeLeft: 'Tempo restante'
+    analyticsViews: 'Visualizações', analyticsUniqueVisitors: 'Visitantes únicos', analyticsDownloads: 'Transferências', analyticsTimeLeft: 'Tempo restante',
+    exchangeName: 'Nome da troca', exchangeNamePlaceholder: 'Dê um nome à troca', exchangeDashboard: 'Painel da troca', sharedFiles: 'Ficheiros partilhados', receivedFiles: 'Ficheiros recebidos',
+    uploadSettings: 'Definições de envio', expirationSettings: 'Definições de expiração', activityHistory: 'Histórico de atividade', closeExchange: 'Fechar troca',
+    confirmCloseExchange: 'Fechar esta troca? Deixará de aceitar e partilhar ficheiros.', saveSettings: 'Guardar definições', deleteFile: 'Eliminar', noFiles: 'Sem ficheiros', noActivity: 'Sem atividade',
+    unnamedExchange: 'Troca sem nome', dashboardUnavailable: 'O painel da troca não está disponível.'
 }

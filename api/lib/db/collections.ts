@@ -6,6 +6,7 @@ import { sql } from './client'
 
 export interface ShareCollectionRow {
     id: string
+    name: string | null
     expiresAt: Date
     passwordHash: string | null
     revokedAt: Date | null
@@ -17,6 +18,15 @@ export interface ShareCollectionFileRow {
     fileName: string
     contentType: string
     size: number
+    source: 'shared' | 'received'
+}
+
+export interface ShareCollectionActivityRow {
+    id: number
+    action: string
+    fileId: string | null
+    details: string | null
+    createdAt: Date
 }
 
 // A file to join, with the hash of the revocation token that came back when it
@@ -35,7 +45,7 @@ export interface CollectionMember {
 // link still stops on time, because its expiry is signed into it.
 //
 // A live link also lets anyone who has it add files later.
-export async function createShareCollection(id: string, members: CollectionMember[], revocationTokenHash: string, live: boolean): Promise<Date | null> {
+export async function createShareCollection(id: string, name: string | null, members: CollectionMember[], revocationTokenHash: string, live: boolean): Promise<Date | null> {
     const ids = members.map(member => member.id)
 
     return sql.begin(async transaction => {
@@ -57,17 +67,21 @@ export async function createShareCollection(id: string, members: CollectionMembe
         const expiresAt = new Date(Math.max(...rows.map(row => row.expires_at.getTime())))
 
         await transaction`
-            insert into share_collections (id, expires_at, password_hash, revocation_token_hash, live)
-            values (${id}, ${expiresAt}, ${passwordHash}, ${revocationTokenHash}, ${live})
+            insert into share_collections (id, name, expires_at, password_hash, revocation_token_hash, live)
+            values (${id}, ${name}, ${expiresAt}, ${passwordHash}, ${revocationTokenHash}, ${live})
         `
         await transaction`
             insert into share_collection_files
-            ${transaction(ids.map((fileId, position) => ({ collection_id: id, file_id: fileId, position })))}
+            ${transaction(ids.map((fileId, position) => ({ collection_id: id, file_id: fileId, position, source: 'shared' })))}
         `
         await transaction`
             update files
             set expires_at = ${expiresAt}
             where id in ${transaction(ids)} and expires_at < ${expiresAt}
+        `
+        await transaction`
+            insert into share_collection_activity (collection_id, action, details)
+            values (${id}, 'exchange_created', ${live ? 'Live exchange opened' : 'Exchange created'})
         `
         return expiresAt
     })
@@ -76,13 +90,14 @@ export async function createShareCollection(id: string, members: CollectionMembe
 // The collection at this id, revoked or not. The id of a single file answers null.
 export async function findShareCollection(id: string): Promise<ShareCollectionRow | null> {
     const [row] = await sql`
-        select id, expires_at, password_hash, revoked_at, live
+        select id, name, expires_at, password_hash, revoked_at, live
         from share_collections
         where id = ${id}
     `
     if (!row) return null
     return {
         id: row.id,
+        name: row.name,
         expiresAt: row.expires_at,
         passwordHash: row.password_hash,
         revokedAt: row.revoked_at,
@@ -94,7 +109,7 @@ export async function findShareCollection(id: string): Promise<ShareCollectionRo
 // was revoked or deleted on its own drops out of the list.
 export async function shareCollectionFiles(id: string): Promise<ShareCollectionFileRow[]> {
     const rows = await sql`
-        select files.id, files.file_name, files.content_type, files.size
+        select files.id, files.file_name, files.content_type, files.size, share_collection_files.source
         from share_collection_files
         join files on files.id = share_collection_files.file_id
         where share_collection_files.collection_id = ${id}
@@ -107,7 +122,8 @@ export async function shareCollectionFiles(id: string): Promise<ShareCollectionF
         id: row.id,
         fileName: row.file_name,
         contentType: row.content_type,
-        size: Number(row.size)
+        size: Number(row.size),
+        source: row.source
     }))
 }
 
@@ -129,6 +145,10 @@ export async function revokeShareCollection(id: string, revocationTokenHash: str
             where id in (
                 select file_id from share_collection_files where collection_id = ${id}
             )
+        `
+        await transaction`
+            insert into share_collection_activity (collection_id, action, details)
+            values (${id}, 'exchange_closed', 'Exchange closed')
         `
         return true
     })
@@ -161,8 +181,8 @@ export async function addShareCollectionFile(
         if (held.count >= maxFiles) return null
 
         await transaction`
-            insert into share_collection_files (collection_id, file_id, position)
-            values (${collectionId}, ${fileId}, ${held.position})
+            insert into share_collection_files (collection_id, file_id, position, source)
+            values (${collectionId}, ${fileId}, ${held.position}, 'received')
             on conflict (collection_id, file_id) do nothing
         `
         await transaction`
@@ -170,6 +190,117 @@ export async function addShareCollectionFile(
             set password_hash = ${passwordHash}, expires_at = ${collection.expires_at}
             where id = ${fileId} and status = 'ready' and deleted_at is null and revoked_at is null
         `
+        await transaction`
+            insert into share_collection_activity (collection_id, action, file_id, details)
+            values (${collectionId}, 'received_file', ${fileId}, 'Incoming file received')
+        `
         return { expiresAt: collection.expires_at }
+    })
+}
+
+export async function exchangeDashboard(id: string, revocationTokenHash: string): Promise<{
+    collection: ShareCollectionRow
+    shared: ShareCollectionFileRow[]
+    received: ShareCollectionFileRow[]
+    activity: ShareCollectionActivityRow[]
+} | null> {
+    const [row] = await sql`
+        select id, name, expires_at, password_hash, revoked_at, live
+        from share_collections
+        where id = ${id} and revocation_token_hash = ${revocationTokenHash}
+    `
+    if (!row) return null
+
+    const collection: ShareCollectionRow = {
+        id: row.id,
+        name: row.name,
+        expiresAt: row.expires_at,
+        passwordHash: row.password_hash,
+        revokedAt: row.revoked_at,
+        live: row.live
+    }
+    const files = await shareCollectionFiles(id)
+    const activityRows = await sql`
+        select id, action, file_id, details, created_at
+        from share_collection_activity
+        where collection_id = ${id}
+        order by created_at desc
+        limit 100
+    `
+    return {
+        collection,
+        shared: files.filter(file => file.source === 'shared'),
+        received: files.filter(file => file.source === 'received'),
+        activity: activityRows.map(row => ({
+            id: Number(row.id),
+            action: row.action,
+            fileId: row.file_id,
+            details: row.details,
+            createdAt: row.created_at
+        }))
+    }
+}
+
+export async function deleteReceivedExchangeFile(id: string, fileId: string, revocationTokenHash: string): Promise<boolean> {
+    return sql.begin(async transaction => {
+        const [collection] = await transaction`
+            select id from share_collections
+            where id = ${id} and revocation_token_hash = ${revocationTokenHash}
+        `
+        if (!collection) return false
+
+        const [removed] = await transaction`
+            delete from share_collection_files
+            where collection_id = ${id}
+                and file_id = ${fileId}
+                and source = 'received'
+            returning file_id
+        `
+        if (!removed) return false
+
+        await transaction`
+            update files
+            set revoked_at = coalesce(revoked_at, now()), expires_at = least(expires_at, now())
+            where id = ${fileId}
+        `
+        await transaction`
+            insert into share_collection_activity (collection_id, action, file_id, details)
+            values (${id}, 'deleted_received', ${fileId}, 'Incoming file removed')
+        `
+        return true
+    })
+}
+
+// A null password hash keeps the password the link has. The lifetime is never
+// changed here, because the link's expiry is signed into its address.
+export async function updateExchangeSettings(
+    id: string,
+    revocationTokenHash: string,
+    name: string | null,
+    live: boolean,
+    passwordHash: string | null
+): Promise<boolean> {
+    return sql.begin(async transaction => {
+        const [row] = await transaction`
+            update share_collections
+            set name = ${name}, live = ${live}, password_hash = coalesce(${passwordHash}, password_hash)
+            where id = ${id} and revocation_token_hash = ${revocationTokenHash}
+            returning id
+        `
+        if (!row) return false
+        if (passwordHash) {
+            await transaction`
+                update files
+                set password_hash = ${passwordHash}
+                where id in (
+                    select file_id from share_collection_files where collection_id = ${id}
+                )
+            `
+        }
+        await transaction`
+            insert into share_collection_activity (collection_id, action, details)
+            values (${id}, 'settings_updated', ${live ? 'Incoming uploads enabled' : 'Incoming uploads closed'})
+        `
+        return true
     })
 }

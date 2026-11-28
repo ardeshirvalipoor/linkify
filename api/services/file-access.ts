@@ -16,6 +16,7 @@ export interface FileInfo {
     contentType: string
     size: number
     protected: boolean
+    source?: 'shared' | 'received'
 }
 
 // Who is asking. The handler digs these out of the request, because nothing in

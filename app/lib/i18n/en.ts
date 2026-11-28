@@ -35,7 +35,12 @@ export const en = {
     addingFile: 'Adding {name}', filesAdded: 'Files added', fileNotAdded: '{name} could not be added.',
     linkIncomplete: 'This link is incomplete. Open the full link again.',
     analytics: 'Analytics', analyticsLoading: 'Loading analytics...', analyticsUnavailable: 'Analytics are unavailable.',
-    analyticsViews: 'Views', analyticsUniqueVisitors: 'Unique visitors', analyticsDownloads: 'Downloads', analyticsTimeLeft: 'Time left'
+    analyticsViews: 'Views', analyticsUniqueVisitors: 'Unique visitors', analyticsDownloads: 'Downloads', analyticsTimeLeft: 'Time left',
+    exchangeName: 'Exchange name', exchangeNamePlaceholder: 'Name this exchange', exchangeDashboard: 'Exchange dashboard',
+    sharedFiles: 'Shared files', receivedFiles: 'Received files', uploadSettings: 'Upload settings', expirationSettings: 'Expiration settings',
+    activityHistory: 'Activity history', closeExchange: 'Close exchange', confirmCloseExchange: 'Close this exchange? It will stop accepting and sharing files.',
+    saveSettings: 'Save settings', deleteFile: 'Delete', noFiles: 'No files', noActivity: 'No activity yet',
+    unnamedExchange: 'Unnamed exchange', dashboardUnavailable: 'The exchange dashboard is unavailable.'
 }
 
 export type TranslationKey = keyof typeof en

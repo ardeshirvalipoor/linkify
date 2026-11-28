@@ -42,5 +42,9 @@ export const ru: Dictionary = {
     addingFile: 'Добавляем {name}', filesAdded: 'Файлы добавлены', fileNotAdded: 'Не удалось добавить {name}.',
     linkIncomplete: 'Ссылка неполная. Откройте полную ссылку ещё раз.',
     analytics: 'Аналитика', analyticsLoading: 'Загрузка аналитики...', analyticsUnavailable: 'Аналитика недоступна.',
-    analyticsViews: 'Просмотры', analyticsUniqueVisitors: 'Уникальные посетители', analyticsDownloads: 'Скачивания', analyticsTimeLeft: 'Осталось времени'
+    analyticsViews: 'Просмотры', analyticsUniqueVisitors: 'Уникальные посетители', analyticsDownloads: 'Скачивания', analyticsTimeLeft: 'Осталось времени',
+    exchangeName: 'Название обмена', exchangeNamePlaceholder: 'Назовите обмен', exchangeDashboard: 'Панель обмена', sharedFiles: 'Общие файлы', receivedFiles: 'Полученные файлы',
+    uploadSettings: 'Настройки загрузки', expirationSettings: 'Настройки срока', activityHistory: 'История активности', closeExchange: 'Закрыть обмен',
+    confirmCloseExchange: 'Закрыть этот обмен? Приём и отправка файлов остановятся.', saveSettings: 'Сохранить', deleteFile: 'Удалить', noFiles: 'Нет файлов', noActivity: 'Активности пока нет',
+    unnamedExchange: 'Обмен без названия', dashboardUnavailable: 'Панель обмена недоступна.'
 }

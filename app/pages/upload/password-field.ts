@@ -12,9 +12,14 @@ export const PasswordField = () => {
 
     const toggle = Input('', 'checkbox', { checked: false })
     toggle.addClass(styles.toggle)
+    const switchTrack = Base('span')
+    switchTrack.addClass(styles.switchTrack)
+    const switchThumb = Base('span')
+    switchThumb.addClass(styles.switchThumb)
+    switchTrack.append(toggle, switchThumb)
     const label = Base('label')
     label.addClass(styles.label)
-    label.append(toggle, Span(t('protect')))
+    label.append(switchTrack, Span(t('protect')))
 
     const input = Input('', 'password')
     input.addClass(styles.input)

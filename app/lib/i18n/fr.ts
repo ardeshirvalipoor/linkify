@@ -41,5 +41,9 @@ export const fr: Dictionary = {
     addingFile: 'Ajout de {name}', filesAdded: 'Fichiers ajoutés', fileNotAdded: 'Impossible d’ajouter {name}.',
     linkIncomplete: 'Ce lien est incomplet. Ouvrez à nouveau le lien complet.',
     analytics: 'Statistiques', analyticsLoading: 'Chargement des statistiques...', analyticsUnavailable: 'Les statistiques ne sont pas disponibles.',
-    analyticsViews: 'Vues', analyticsUniqueVisitors: 'Visiteurs uniques', analyticsDownloads: 'Téléchargements', analyticsTimeLeft: 'Temps restant'
+    analyticsViews: 'Vues', analyticsUniqueVisitors: 'Visiteurs uniques', analyticsDownloads: 'Téléchargements', analyticsTimeLeft: 'Temps restant',
+    exchangeName: "Nom de l’échange", exchangeNamePlaceholder: 'Nommer cet échange', exchangeDashboard: 'Tableau de bord', sharedFiles: 'Fichiers partagés', receivedFiles: 'Fichiers reçus',
+    uploadSettings: 'Paramètres d’envoi', expirationSettings: 'Paramètres d’expiration', activityHistory: 'Historique', closeExchange: 'Fermer l’échange',
+    confirmCloseExchange: 'Fermer cet échange ? Il ne pourra plus recevoir ni partager de fichiers.', saveSettings: 'Enregistrer', deleteFile: 'Supprimer', noFiles: 'Aucun fichier', noActivity: 'Aucune activité',
+    unnamedExchange: 'Échange sans nom', dashboardUnavailable: 'Le tableau de bord est indisponible.'
 }

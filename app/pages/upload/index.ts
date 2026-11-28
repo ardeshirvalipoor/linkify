@@ -127,7 +127,7 @@ export const UploadPage = () => {
     const toast = Toast()
 
     card.append(heading, intro, expiry, password, live, dropZone, queueList, preview, fileRow, resumeNote, actions, terms, progress, status, share, expirySummary, error, endActions)
-    page.append(createSiteNavigation(), createPreferencesBar(), card, Benefits(), About(), share.dialog, share.analyticsDialog, revoke.dialog)
+    page.append(createSiteNavigation(), createPreferencesBar(), card, Benefits(), About(), share.dialog, share.analyticsDialog, share.dashboardDialog, revoke.dialog)
 
     // --- state ---------------------------------------------------------------
 
@@ -273,6 +273,7 @@ export const UploadPage = () => {
             expiresIn: expiry.value(),
             password: chosenPassword,
             live: live.checked(),
+            name: live.checked() ? live.name() || undefined : undefined,
             onItem: itemChanged,
             onStatus: message => status.text(translateUploadStatus(message)),
             onProgress: report => progress.update(report.uploadedBytes, report.totalBytes)
@@ -295,7 +296,7 @@ export const UploadPage = () => {
 
         const revocationTokenSaved = storeRevocationToken(result.link.id, result.link.revocationToken)
         // Only a one-file link that is not live has a preview page of its own.
-        share.setLink(result.link.url, !live.checked() && queue.items.filter(item => item.link).length === 1)
+        share.setLink(result.link.url, !live.checked() && queue.items.filter(item => item.link).length === 1, live.checked())
         revoke.set(result.link.id, result.link.revocationToken)
         const expiryText = t('expirySummary', { duration: expiry.label() })
         expirySummary.text(revocationTokenSaved ? expiryText : `${expiryText} ${t('revocationNotSaved')}`)

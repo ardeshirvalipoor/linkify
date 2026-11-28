@@ -42,5 +42,9 @@ export const ja: Dictionary = {
     addingFile: '{name} を追加しています', filesAdded: 'ファイルを追加しました', fileNotAdded: '{name} を追加できませんでした。',
     linkIncomplete: 'このリンクは不完全です。完全なリンクをもう一度開いてください。',
     analytics: 'アナリティクス', analyticsLoading: 'アナリティクスを読み込み中...', analyticsUnavailable: 'アナリティクスを利用できません。',
-    analyticsViews: '閲覧数', analyticsUniqueVisitors: 'ユニーク訪問者', analyticsDownloads: 'ダウンロード', analyticsTimeLeft: '残り時間'
+    analyticsViews: '閲覧数', analyticsUniqueVisitors: 'ユニーク訪問者', analyticsDownloads: 'ダウンロード', analyticsTimeLeft: '残り時間',
+    exchangeName: '交換名', exchangeNamePlaceholder: '交換に名前を付ける', exchangeDashboard: '交換ダッシュボード', sharedFiles: '共有ファイル', receivedFiles: '受信ファイル',
+    uploadSettings: 'アップロード設定', expirationSettings: '有効期限設定', activityHistory: 'アクティビティ履歴', closeExchange: '交換を終了',
+    confirmCloseExchange: 'この交換を終了しますか？ファイルの受信と共有を停止します。', saveSettings: '設定を保存', deleteFile: '削除', noFiles: 'ファイルなし', noActivity: 'アクティビティなし',
+    unnamedExchange: '名前のない交換', dashboardUnavailable: '交換ダッシュボードを利用できません。'
 }
