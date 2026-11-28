@@ -41,5 +41,9 @@ export const zh: Dictionary = {
     addingFile: '正在添加 {name}', filesAdded: '文件已添加', fileNotAdded: '无法添加 {name}。',
     linkIncomplete: '此链接不完整。请重新打开完整链接。',
     analytics: '分析', analyticsLoading: '正在加载分析...', analyticsUnavailable: '无法获取分析数据。',
-    analyticsViews: '查看次数', analyticsUniqueVisitors: '独立访客', analyticsDownloads: '下载次数', analyticsTimeLeft: '剩余时间'
+    analyticsViews: '查看次数', analyticsUniqueVisitors: '独立访客', analyticsDownloads: '下载次数', analyticsTimeLeft: '剩余时间',
+    exchangeName: '交换名称', exchangeNamePlaceholder: '为交换命名', exchangeDashboard: '交换仪表板', sharedFiles: '已共享文件', receivedFiles: '收到的文件',
+    uploadSettings: '上传设置', expirationSettings: '过期设置', activityHistory: '活动历史', closeExchange: '关闭交换',
+    confirmCloseExchange: '关闭此交换？它将停止接收和共享文件。', saveSettings: '保存设置', deleteFile: '删除', noFiles: '没有文件', noActivity: '暂无活动',
+    unnamedExchange: '未命名交换', dashboardUnavailable: '交换仪表板不可用。'
 }

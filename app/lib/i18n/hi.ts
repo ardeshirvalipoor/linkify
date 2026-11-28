@@ -41,5 +41,9 @@ export const hi: Dictionary = {
     addingFile: '{name} जोड़ी जा रही है', filesAdded: 'फ़ाइलें जोड़ दी गईं', fileNotAdded: '{name} नहीं जोड़ी जा सकी।',
     linkIncomplete: 'यह लिंक अधूरा है। पूरा लिंक फिर से खोलें।',
     analytics: 'एनालिटिक्स', analyticsLoading: 'एनालिटिक्स लोड हो रही है...', analyticsUnavailable: 'एनालिटिक्स उपलब्ध नहीं हैं.',
-    analyticsViews: 'व्यूज़', analyticsUniqueVisitors: 'यूनीक विज़िटर', analyticsDownloads: 'डाउनलोड', analyticsTimeLeft: 'बचा समय'
+    analyticsViews: 'व्यूज़', analyticsUniqueVisitors: 'यूनीक विज़िटर', analyticsDownloads: 'डाउनलोड', analyticsTimeLeft: 'बचा समय',
+    exchangeName: 'Exchange नाम', exchangeNamePlaceholder: 'Exchange का नाम दें', exchangeDashboard: 'Exchange dashboard', sharedFiles: 'Shared files', receivedFiles: 'Received files',
+    uploadSettings: 'Upload settings', expirationSettings: 'Expiration settings', activityHistory: 'Activity history', closeExchange: 'Exchange बंद करें',
+    confirmCloseExchange: 'Exchange बंद करें? यह और फ़ाइलें स्वीकार या साझा नहीं करेगा.', saveSettings: 'Settings सेव करें', deleteFile: 'हटाएँ', noFiles: 'कोई फ़ाइल नहीं', noActivity: 'अभी कोई activity नहीं',
+    unnamedExchange: 'Unnamed exchange', dashboardUnavailable: 'Exchange dashboard उपलब्ध नहीं है.'
 }

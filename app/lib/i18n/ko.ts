@@ -42,5 +42,9 @@ export const ko: Dictionary = {
     addingFile: '{name} 추가 중', filesAdded: '파일을 추가했습니다', fileNotAdded: '{name}을(를) 추가하지 못했습니다.',
     linkIncomplete: '링크가 불완전합니다. 전체 링크를 다시 열어 주세요.',
     analytics: '분석', analyticsLoading: '분석을 불러오는 중...', analyticsUnavailable: '분석 정보를 사용할 수 없습니다.',
-    analyticsViews: '조회수', analyticsUniqueVisitors: '고유 방문자', analyticsDownloads: '다운로드', analyticsTimeLeft: '남은 시간'
+    analyticsViews: '조회수', analyticsUniqueVisitors: '고유 방문자', analyticsDownloads: '다운로드', analyticsTimeLeft: '남은 시간',
+    exchangeName: '교환 이름', exchangeNamePlaceholder: '교환 이름 입력', exchangeDashboard: '교환 대시보드', sharedFiles: '공유 파일', receivedFiles: '받은 파일',
+    uploadSettings: '업로드 설정', expirationSettings: '만료 설정', activityHistory: '활동 기록', closeExchange: '교환 닫기',
+    confirmCloseExchange: '이 교환을 닫으시겠습니까? 파일 수신 및 공유가 중지됩니다.', saveSettings: '설정 저장', deleteFile: '삭제', noFiles: '파일 없음', noActivity: '아직 활동 없음',
+    unnamedExchange: '이름 없는 교환', dashboardUnavailable: '교환 대시보드를 사용할 수 없습니다.'
 }

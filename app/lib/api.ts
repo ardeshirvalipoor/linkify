@@ -44,14 +44,36 @@ export interface FileInfo {
     contentType: string
     size: number
     protected: boolean
+    source?: 'shared' | 'received'
 }
 
 // A link that holds several files. The server checks its password once for all.
 export interface CollectionInfo {
     id: string
+    name: string | null
     files: FileInfo[]
+    sharedFiles: FileInfo[]
+    receivedFiles: FileInfo[]
     protected: boolean
     live: boolean
+}
+
+export interface ExchangeActivity {
+    id: number
+    action: string
+    fileId: string | null
+    details: string | null
+    createdAt: string
+}
+
+export interface ExchangeDashboard {
+    name: string | null
+    live: boolean
+    expiresAt: string
+    protected: boolean
+    sharedFiles: FileInfo[]
+    receivedFiles: FileInfo[]
+    activity: ExchangeActivity[]
 }
 
 export type ShareInfo = FileInfo | CollectionInfo
@@ -112,8 +134,24 @@ export async function getLinkAnalytics(id: string, shareUrl: URL): Promise<LinkA
 
 // Joins finished files into one link. Each file's own revocation token proves
 // that this browser uploaded it. A live link lets anyone who has it add files.
-export async function createShareCollection(files: { id: string; revocationToken: string }[], live: boolean): Promise<ShareLink> {
-    return unwrap(await http.post('/api/files/collections', { files, live }))
+export async function createShareCollection(files: { id: string; revocationToken: string }[], live: boolean, name?: string): Promise<ShareLink> {
+    return unwrap(await http.post('/api/files/collections', { files, live, name }))
+}
+
+export async function getExchangeDashboard(id: string, revocationToken: string): Promise<ExchangeDashboard> {
+    return unwrap<ExchangeDashboard>(await http.post(`/api/files/${id}/dashboard`, { revocationToken }))
+}
+
+export async function deleteExchangeReceivedFile(id: string, fileId: string, revocationToken: string): Promise<void> {
+    unwrap(await http.post(`/api/files/${id}/items/${fileId}/delete`, { revocationToken }))
+}
+
+export async function updateExchangeSettings(
+    id: string,
+    revocationToken: string,
+    settings: { name: string | null; live: boolean; password: string | null; expiresIn: LinkExpiry }
+): Promise<void> {
+    unwrap(await http.post(`/api/files/${id}/settings`, { revocationToken, ...settings }))
 }
 
 export async function cancelUpload(token: string): Promise<void> {

@@ -41,5 +41,9 @@ export const de: Dictionary = {
     addingFile: '{name} wird hinzugefügt', filesAdded: 'Dateien hinzugefügt', fileNotAdded: '{name} konnte nicht hinzugefügt werden.',
     linkIncomplete: 'Dieser Link ist unvollständig. Öffne den vollständigen Link noch einmal.',
     analytics: 'Analysen', analyticsLoading: 'Analysen werden geladen...', analyticsUnavailable: 'Analysen sind nicht verfügbar.',
-    analyticsViews: 'Aufrufe', analyticsUniqueVisitors: 'Einmalige Besucher', analyticsDownloads: 'Downloads', analyticsTimeLeft: 'Verbleibende Zeit'
+    analyticsViews: 'Aufrufe', analyticsUniqueVisitors: 'Einmalige Besucher', analyticsDownloads: 'Downloads', analyticsTimeLeft: 'Verbleibende Zeit',
+    exchangeName: 'Austauschname', exchangeNamePlaceholder: 'Austausch benennen', exchangeDashboard: 'Austausch-Dashboard', sharedFiles: 'Geteilte Dateien', receivedFiles: 'Empfangene Dateien',
+    uploadSettings: 'Upload-Einstellungen', expirationSettings: 'Ablaufeinstellungen', activityHistory: 'Aktivitätsverlauf', closeExchange: 'Austausch schließen',
+    confirmCloseExchange: 'Diesen Austausch schließen? Er nimmt keine Dateien mehr an und gibt keine frei.', saveSettings: 'Einstellungen speichern', deleteFile: 'Löschen', noFiles: 'Keine Dateien', noActivity: 'Noch keine Aktivitäten',
+    unnamedExchange: 'Unbenannter Austausch', dashboardUnavailable: 'Das Austausch-Dashboard ist nicht verfügbar.'
 }

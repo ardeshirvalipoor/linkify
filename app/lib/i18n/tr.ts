@@ -42,5 +42,9 @@ export const tr: Dictionary = {
     addingFile: '{name} ekleniyor', filesAdded: 'Dosyalar eklendi', fileNotAdded: '{name} eklenemedi.',
     linkIncomplete: 'Bu bağlantı eksik. Bağlantının tamamını yeniden açın.',
     analytics: 'Analitik', analyticsLoading: 'Analitikler yükleniyor...', analyticsUnavailable: 'Analitikler kullanılamıyor.',
-    analyticsViews: 'Görüntülenme', analyticsUniqueVisitors: 'Tekil ziyaretçi', analyticsDownloads: 'İndirme', analyticsTimeLeft: 'Kalan süre'
+    analyticsViews: 'Görüntülenme', analyticsUniqueVisitors: 'Tekil ziyaretçi', analyticsDownloads: 'İndirme', analyticsTimeLeft: 'Kalan süre',
+    exchangeName: 'Takım adı', exchangeNamePlaceholder: 'Bu takımı adlandırın', exchangeDashboard: 'Takım panosu', sharedFiles: 'Paylaşılan dosyalar', receivedFiles: 'Alınan dosyalar',
+    uploadSettings: 'Yükleme ayarları', expirationSettings: 'Bitiş ayarları', activityHistory: 'Etkinlik geçmişi', closeExchange: 'Takımı kapat',
+    confirmCloseExchange: 'Bu takım kapatılsın mı? Dosya kabul etmeyi ve paylaşmayı durdurur.', saveSettings: 'Ayarları kaydet', deleteFile: 'Sil', noFiles: 'Dosya yok', noActivity: 'Henüz etkinlik yok',
+    unnamedExchange: 'Adsız takım', dashboardUnavailable: 'Takım panosu kullanılamıyor.'
 }

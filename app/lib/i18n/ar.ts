@@ -41,5 +41,9 @@ export const ar: Dictionary = {
     addingFile: 'جارٍ إضافة {name}', filesAdded: 'تمت إضافة الملفات', fileNotAdded: 'تعذرت إضافة {name}.',
     linkIncomplete: 'هذا الرابط غير مكتمل. افتح الرابط الكامل مرة أخرى.',
     analytics: 'التحليلات', analyticsLoading: 'جار تحميل التحليلات...', analyticsUnavailable: 'التحليلات غير متاحة.',
-    analyticsViews: 'المشاهدات', analyticsUniqueVisitors: 'الزوار الفريدون', analyticsDownloads: 'التنزيلات', analyticsTimeLeft: 'الوقت المتبقي'
+    analyticsViews: 'المشاهدات', analyticsUniqueVisitors: 'الزوار الفريدون', analyticsDownloads: 'التنزيلات', analyticsTimeLeft: 'الوقت المتبقي',
+    exchangeName: 'اسم التبادل', exchangeNamePlaceholder: 'تسمية التبادل', exchangeDashboard: 'لوحة التبادل', sharedFiles: 'الملفات المشتركة', receivedFiles: 'الملفات المستلمة',
+    uploadSettings: 'إعدادات الرفع', expirationSettings: 'إعدادات الانتهاء', activityHistory: 'سجل النشاط', closeExchange: 'إغلاق التبادل',
+    confirmCloseExchange: 'إغلاق هذا التبادل؟ سيتوقف عن قبول ومشاركة الملفات.', saveSettings: 'حفظ الإعدادات', deleteFile: 'حذف', noFiles: 'لا توجد ملفات', noActivity: 'لا يوجد نشاط بعد',
+    unnamedExchange: 'تبادل بدون اسم', dashboardUnavailable: 'لوحة التبادل غير متاحة.'
 }
