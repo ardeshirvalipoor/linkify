@@ -8,13 +8,19 @@ import { MAX_FILES_PER_LINK } from '../config'
 import * as db from '../lib/db'
 import { newFileId } from '../lib/file-id'
 import { HttpError } from '../lib/http-error'
-import { createShareLink, verifyShareLink } from '../lib/share-link'
+import { createShareLink, verifyShareLink, LinkExpiry } from '../lib/share-link'
 import { createRevocationToken, hashRevocationToken } from '../lib/share-revocation'
 import { countedDownloadUrl, FileInfo, previewContentType, requirePassword, Visitor } from './file-access'
+import { hashPassword } from '../lib/share-link'
+import { objectKey } from '../lib/file-id'
+import * as storage from '../lib/storage'
 
 export interface CollectionInfo {
     id: string
+    name: string | null
     files: FileInfo[]
+    sharedFiles: FileInfo[]
+    receivedFiles: FileInfo[]
     protected: boolean
     live: boolean
 }
@@ -26,7 +32,7 @@ export interface CollectionMember {
 }
 
 // A live link holds even one file, because others may add more to it later.
-export async function create(members: CollectionMember[], live: boolean): Promise<{ id: string; url: string; revocationToken: string }> {
+export async function create(members: CollectionMember[], live: boolean, name?: string): Promise<{ id: string; url: string; revocationToken: string }> {
     const ids = members.map(member => member.id)
     if (ids.length < 1 || ids.length > MAX_FILES_PER_LINK || new Set(ids).size !== ids.length) {
         throw new HttpError(400, `A share link holds from 1 to ${MAX_FILES_PER_LINK} different files`)
@@ -34,7 +40,7 @@ export async function create(members: CollectionMember[], live: boolean): Promis
 
     const id = newFileId()
     const revocationToken = createRevocationToken()
-    const expiresAt = await db.createShareCollection(id, members.map(member => ({
+    const expiresAt = await db.createShareCollection(id, name?.trim() || null, members.map(member => ({
         id: member.id,
         revocationTokenHash: hashRevocationToken(member.revocationToken)
     })), hashRevocationToken(revocationToken), live)
@@ -53,14 +59,32 @@ export async function info(id: string, password?: string): Promise<CollectionInf
     const isProtected = Boolean(collection.passwordHash)
     return {
         id,
+        name: collection.name,
         protected: isProtected,
         live: collection.live,
+        sharedFiles: files.filter(file => file.source === 'shared').map(file => ({
+            id: file.id,
+            fileName: file.fileName,
+            contentType: previewContentType(file.contentType, file.fileName),
+            size: file.size,
+            protected: isProtected,
+            source: 'shared'
+        })),
+        receivedFiles: files.filter(file => file.source === 'received').map(file => ({
+            id: file.id,
+            fileName: file.fileName,
+            contentType: previewContentType(file.contentType, file.fileName),
+            size: file.size,
+            protected: isProtected,
+            source: 'received'
+        })),
         files: files.map(file => ({
             id: file.id,
             fileName: file.fileName,
             contentType: previewContentType(file.contentType, file.fileName),
             size: file.size,
-            protected: isProtected
+            protected: isProtected,
+            source: file.source
         }))
     }
 }
@@ -103,6 +127,62 @@ export async function add(collection: db.ShareCollectionRow, fileId: string): Pr
 // True when the id and token belong to a collection, which is now revoked.
 export async function revoke(id: string, revocationToken: string): Promise<boolean> {
     return db.revokeShareCollection(id, hashRevocationToken(revocationToken))
+}
+
+export async function dashboard(id: string, revocationToken: string): Promise<{
+    name: string | null
+    live: boolean
+    expiresAt: string
+    protected: boolean
+    sharedFiles: FileInfo[]
+    receivedFiles: FileInfo[]
+    activity: db.ShareCollectionActivityRow[]
+} | null> {
+    const result = await db.exchangeDashboard(id, hashRevocationToken(revocationToken))
+    if (!result) return null
+    const mapFile = (file: db.ShareCollectionFileRow): FileInfo => ({
+        id: file.id,
+        fileName: file.fileName,
+        contentType: previewContentType(file.contentType, file.fileName),
+        size: file.size,
+        protected: Boolean(result.collection.passwordHash),
+        source: file.source
+    })
+    return {
+        name: result.collection.name,
+        live: result.collection.live,
+        expiresAt: result.collection.expiresAt.toISOString(),
+        protected: Boolean(result.collection.passwordHash),
+        sharedFiles: result.shared.map(mapFile),
+        receivedFiles: result.received.map(mapFile),
+        activity: result.activity
+    }
+}
+
+export async function deleteReceived(id: string, fileId: string, revocationToken: string): Promise<void> {
+    if (!await db.deleteReceivedExchangeFile(id, fileId, hashRevocationToken(revocationToken))) {
+        throw new HttpError(404, 'This incoming file or exchange is not available')
+    }
+    await storage.deleteFile(objectKey(fileId))
+}
+
+export async function updateSettings(
+    id: string,
+    revocationToken: string,
+    name: string | null,
+    live: boolean,
+    password: string | null,
+    expiresIn: LinkExpiry
+): Promise<void> {
+    const passwordHash = password ? hashPassword(password) : null
+    const expiresAt = new Date(Date.now() + ({
+        '1h': 60 * 60 * 1000,
+        '1d': 24 * 60 * 60 * 1000,
+        '1w': 7 * 24 * 60 * 60 * 1000
+    } satisfies Record<LinkExpiry, number>)[expiresIn])
+    if (!await db.updateExchangeSettings(id, hashRevocationToken(revocationToken), name, live, passwordHash, expiresAt)) {
+        throw new HttpError(404, 'This exchange is not available')
+    }
 }
 
 // The files a visitor may have, after the same checks a single file's link gets.
