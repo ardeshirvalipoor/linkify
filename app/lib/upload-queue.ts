@@ -37,6 +37,7 @@ export interface RunOptions {
     password?: string
     // Whether anyone holding the link may add files to it.
     live: boolean
+    name?: string
     onItem(item: QueueItem): void
     onStatus(message: string): void
     onProgress(report: UploadReport): void
@@ -116,7 +117,7 @@ export function createUploadQueue() {
 
             const finished = items.flatMap(item => item.link ? [item.link] : [])
             if (finished.length < (options.live ? 1 : 2)) return { paused: false, link: finished[0], error }
-            const link = await api.createShareCollection(finished.map(({ id, revocationToken }) => ({ id, revocationToken })), options.live)
+            const link = await api.createShareCollection(finished.map(({ id, revocationToken }) => ({ id, revocationToken })), options.live, options.name)
             return { paused: false, link, error }
         } catch (problem) {
             return { paused: false, error: describe(problem) }
