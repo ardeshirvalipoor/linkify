@@ -10,17 +10,33 @@ export const LiveField = () => {
     const base = Div()
     base.addClass(styles.row)
 
+    const name = Input('', 'text')
+    name.addClass(styles.input)
+    name.el.placeholder = t('exchangeNamePlaceholder')
+    name.el.setAttribute('aria-label', t('exchangeName'))
+
     const toggle = Input('', 'checkbox', { checked: false })
     toggle.addClass(styles.toggle)
+    const switchTrack = Base('span')
+    switchTrack.addClass(styles.switchTrack)
+    const switchThumb = Base('span')
+    switchThumb.addClass(styles.switchThumb)
+    switchTrack.append(toggle, switchThumb)
     const label = Base('label')
     label.addClass(styles.label)
-    label.append(toggle, Span(t('letOthersAdd')))
-    base.append(label)
+    label.append(switchTrack, Span(t('letOthersAdd')))
+    base.append(label, name)
 
     return Object.assign(base, {
         checked: () => toggle.el.checked,
         reset() {
             toggle.el.checked = false
+            name.setValue('')
+        }
+        ,
+        name: () => name.value().trim(),
+        setDisabled(disabled: boolean) {
+            name.el.disabled = disabled
         }
     })
 }

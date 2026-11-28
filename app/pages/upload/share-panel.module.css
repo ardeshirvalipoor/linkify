@@ -79,6 +79,157 @@ button.qrButton {
     font-size: 12px;
 }
 
+.dashboardFile {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    width: 100%;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--line);
+}
+
+.dashboardFile p {
+    margin: 0;
+}
+
+.dashboardName {
+    width: 100%;
+    font-size: 20px;
+    text-align: left;
+}
+
+.dashboardExpiry {
+    width: 100%;
+    margin: -8px 0 4px;
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.dashboardLink {
+    width: 100%;
+    min-width: 0;
+    padding: 11px 12px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--field);
+    color: var(--ink);
+    font-size: 13px;
+}
+
+.settingsCard {
+    display: grid;
+    gap: 10px;
+    width: 100%;
+    padding: 16px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: var(--field-soft);
+}
+
+.settingsTitle {
+    margin: 0 0 2px;
+    font-size: 15px;
+}
+
+.settingsInput,
+.settingsSelect {
+    width: 100%;
+    min-height: 44px;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    background: var(--field);
+    color: var(--ink);
+    font: inherit;
+    font-size: 14px;
+    outline: none;
+}
+
+.settingsInput:focus,
+.settingsSelect:focus {
+    border-color: var(--brand, #14532d);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.settingsSelect {
+    cursor: pointer;
+}
+
+.toggleLabel {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 44px;
+    color: var(--ink);
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.settingsToggle {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    opacity: 0;
+    appearance: none;
+    cursor: pointer;
+}
+
+.settingsSwitchTrack {
+    position: relative;
+    display: block;
+    width: 46px;
+    height: 26px;
+    flex: 0 0 46px;
+    border-radius: 999px;
+    background: var(--line);
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .08);
+    transition: background .15s ease;
+}
+
+.settingsSwitchTrack:has(.settingsToggle:checked) {
+    background: var(--brand, #14532d);
+}
+
+.settingsSwitchThumb {
+    position: absolute;
+    z-index: 1;
+    top: 4px;
+    left: 3px;
+    width: 18px;
+    height: 18px;
+    pointer-events: none;
+    border-radius: 50%;
+    background: var(--surface);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .25);
+    transition: transform .15s ease;
+}
+
+.settingsSwitchTrack:has(.settingsToggle:checked) .settingsSwitchThumb {
+    transform: translateX(18px);
+}
+
+.settingsSwitchTrack:has(.settingsToggle:focus-visible) {
+    outline: 3px solid var(--accent-soft);
+    outline-offset: 2px;
+}
+
+.dashboardActions {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    width: 100%;
+}
+
+.sectionTitle {
+    width: 100%;
+    margin: 8px 0 0;
+    font-size: 14px;
+}
+
 @media (max-width: 560px) {
     .row {
         flex-direction: column;

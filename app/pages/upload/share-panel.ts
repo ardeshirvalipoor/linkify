@@ -4,7 +4,18 @@
 import { Base, Button, Div, Input, P, waitFor } from '@codesuma/baseline'
 import { toDataURL } from 'qrcode'
 import { t } from '../../lib/i18n'
-import { getLinkAnalytics } from '../../lib/api'
+import {
+    deleteExchangeReceivedFile,
+    getExchangeDashboard,
+    getLinkAnalytics,
+    revokeShareLink,
+    updateExchangeSettings,
+    type ExchangeActivity,
+    type FileInfo,
+    type LinkExpiry
+} from '../../lib/api'
+import { getRevocationToken } from '../../lib/share-revocation'
+import { fileSize } from '../../lib/format'
 import { show } from '../../lib/show'
 import { storeUploaderPassword } from '../../lib/uploader-password'
 import { Dialog } from './dialog'
@@ -34,9 +45,13 @@ export const SharePanel = (onError: (message: string) => void) => {
     const analyticsButton = Button(t('analytics'))
     analyticsButton.addClass('button', 'secondary')
 
+    const manageButton = Button(t('exchangeDashboard'))
+    manageButton.addClass('button', 'secondary')
+    show(manageButton, false)
+
     const actions = Div()
     actions.addClass(styles.actions)
-    actions.append(copyButton, openButton, previewButton, analyticsButton, qrButton)
+    actions.append(copyButton, openButton, previewButton, analyticsButton, manageButton, qrButton)
 
     const base = Div()
     base.addClass(styles.row)
@@ -61,7 +76,142 @@ export const SharePanel = (onError: (message: string) => void) => {
     analyticsClose.addClass('button', 'secondary')
     analyticsDialog.panel.append(analyticsStatus, analyticsGrid, analyticsClose)
 
+    const dashboardDialog = Dialog(t('exchangeDashboard'))
+    const dashboardStatus = P('')
+    const dashboardName = Base('strong')
+    dashboardName.addClass(styles.dashboardName)
+    const dashboardExpiry = P('')
+    dashboardExpiry.addClass(styles.dashboardExpiry)
+    const dashboardLink = Input('', 'text', { readonly: true })
+    dashboardLink.addClass(styles.dashboardLink)
+    const sharedTitle = Base('h4')
+    sharedTitle.addClass(styles.sectionTitle)
+    sharedTitle.text(t('sharedFiles'))
+    const sharedList = Div()
+    const receivedTitle = Base('h4')
+    receivedTitle.addClass(styles.sectionTitle)
+    receivedTitle.text(t('receivedFiles'))
+    const receivedList = Div()
+    const activityTitle = Base('h4')
+    activityTitle.addClass(styles.sectionTitle)
+    activityTitle.text(t('activityHistory'))
+    const activityList = Div()
+
+    const settingsTitle = Base('h4')
+    settingsTitle.addClass(styles.settingsTitle)
+    settingsTitle.text(t('uploadSettings'))
+    const nameInput = Input('', 'text')
+    nameInput.addClass(styles.settingsInput)
+    nameInput.el.placeholder = t('exchangeNamePlaceholder')
+    nameInput.el.setAttribute('aria-label', t('exchangeName'))
+    const liveToggle = Input('', 'checkbox')
+    liveToggle.addClass(styles.settingsToggle)
+    const liveTrack = Base('span')
+    liveTrack.addClass(styles.settingsSwitchTrack)
+    const liveThumb = Base('span')
+    liveThumb.addClass(styles.settingsSwitchThumb)
+    liveTrack.append(liveToggle, liveThumb)
+    const liveLabel = Base('label')
+    liveLabel.addClass(styles.toggleLabel)
+    liveLabel.append(liveTrack, Base('span'))
+    liveLabel.el.lastElementChild!.textContent = t('letOthersAdd')
+    const passwordInput = Input('', 'password')
+    passwordInput.addClass(styles.settingsInput)
+    passwordInput.el.placeholder = t('passwordPlaceholder')
+    const expirySelect = Base('select')
+    expirySelect.addClass(styles.settingsSelect)
+    for (const [value, label] of [['1h', t('hour')], ['1d', t('day')], ['1w', t('week')]] as const) {
+        const option = Base('option')
+        option.el.value = value
+        option.text(label)
+        expirySelect.append(option)
+    }
+    const saveSettings = Button(t('saveSettings'))
+    saveSettings.addClass('button', 'primary')
+    const closeExchange = Button(t('closeExchange'))
+    closeExchange.addClass('button', 'danger')
+    const dashboardClose = Button(t('close'))
+    dashboardClose.addClass('button', 'secondary')
+
+    const settingsCard = Div()
+    settingsCard.addClass(styles.settingsCard)
+    settingsCard.append(settingsTitle, nameInput, liveLabel, passwordInput, expirySelect, saveSettings)
+    const dashboardActions = Div()
+    dashboardActions.addClass(styles.dashboardActions)
+    dashboardActions.append(closeExchange, dashboardClose)
+    dashboardDialog.panel.append(
+        dashboardName, dashboardStatus, dashboardLink, dashboardExpiry,
+        sharedTitle, sharedList, receivedTitle, receivedList,
+        settingsCard,
+        activityTitle, activityList, dashboardActions
+    )
+
     let link = ''
+    let dashboardIsLive = false
+    let dashboardId = ''
+
+    async function refreshDashboard() {
+        if (!dashboardId) return
+        const token = getRevocationToken(dashboardId)
+        if (!token) {
+            dashboardStatus.text(t('revocationNotSaved'))
+            return
+        }
+        dashboardStatus.text(t('loading'))
+        try {
+            const result = await getExchangeDashboard(dashboardId, token)
+            dashboardName.text(result.name || t('unnamedExchange'))
+            dashboardLink.setValue(link)
+            dashboardExpiry.text(`${t('linkExpiresAt', { date: new Date(result.expiresAt).toLocaleString() })}`)
+            nameInput.setValue(result.name || '')
+            liveToggle.el.checked = result.live
+            passwordInput.setValue('')
+            renderFileList(sharedList, result.sharedFiles, false)
+            renderFileList(receivedList, result.receivedFiles, true)
+            renderActivity(result.activity)
+            dashboardStatus.text('')
+        } catch (problem) {
+            dashboardStatus.text(problem instanceof Error ? problem.message : t('dashboardUnavailable'))
+        }
+    }
+
+    function renderFileList(container: ReturnType<typeof Div>, files: FileInfo[], deletable: boolean) {
+        container.el.replaceChildren()
+        if (files.length === 0) {
+            container.append(P(t('noFiles')))
+            return
+        }
+        for (const file of files) {
+            const row = Div()
+            row.addClass(styles.dashboardFile)
+            const label = P(`${file.fileName} · ${fileSize(file.size)}`)
+            row.append(label)
+            if (deletable) {
+                const remove = Button(t('deleteFile'))
+                remove.addClass('button', 'secondary')
+                remove.on('click', async () => {
+                    const token = getRevocationToken(dashboardId)
+                    if (!token) return
+                    await deleteExchangeReceivedFile(dashboardId, file.id, token)
+                    await refreshDashboard()
+                })
+                row.append(remove)
+            }
+            container.append(row)
+        }
+    }
+
+    function renderActivity(activity: ExchangeActivity[]) {
+        activityList.el.replaceChildren()
+        if (activity.length === 0) {
+            activityList.append(P(t('noActivity')))
+            return
+        }
+        for (const item of activity) {
+            const row = P(`${new Date(item.createdAt).toLocaleString()} · ${item.details || item.action}`)
+            activityList.append(row)
+        }
+    }
 
     // Keep viewer URLs identical to the public share link.
     function viewerUrl(): URL {
@@ -123,6 +273,41 @@ export const SharePanel = (onError: (message: string) => void) => {
 
     qrClose.on('click', qrDialog.close)
     analyticsClose.on('click', analyticsDialog.close)
+    dashboardClose.on('click', dashboardDialog.close)
+
+    manageButton.on('click', async () => {
+        if (!dashboardId) return
+        dashboardDialog.open()
+        await refreshDashboard()
+    })
+
+    saveSettings.on('click', async () => {
+        const token = getRevocationToken(dashboardId)
+        if (!token) {
+            dashboardStatus.text(t('revocationNotSaved'))
+            return
+        }
+        try {
+            const password = passwordInput.value().trim()
+            await updateExchangeSettings(dashboardId, token, {
+                name: nameInput.value().trim() || null,
+                live: liveToggle.el.checked,
+                password: password || null,
+                expiresIn: expirySelect.el.value as LinkExpiry
+            })
+            await refreshDashboard()
+        } catch (problem) {
+            dashboardStatus.text(problem instanceof Error ? problem.message : t('dashboardUnavailable'))
+        }
+    })
+
+    closeExchange.on('click', async () => {
+        const token = getRevocationToken(dashboardId)
+        if (!token) return
+        if (!window.confirm(t('confirmCloseExchange'))) return
+        await revokeShareLink(dashboardId, token)
+        dashboardDialog.close()
+    })
 
     analyticsButton.on('click', async () => {
         if (!link) return
@@ -168,17 +353,25 @@ export const SharePanel = (onError: (message: string) => void) => {
         // The page puts the dialog at its top level, over everything else.
         dialog: qrDialog,
         analyticsDialog,
+        dashboardDialog,
         // A link that holds several files has no preview page of its own.
-        setLink(url: string, previewable: boolean) {
+        setLink(url: string, previewable: boolean, live = false) {
             link = url
             input.setValue(url)
             show(previewButton, previewable)
+            show(manageButton, live)
+            const match = /^\/f\/([^/]+)$/.exec(new URL(url).pathname)
+            dashboardId = match?.[1] ?? ''
+            dashboardIsLive = live
         },
         clear() {
             link = ''
+            dashboardId = ''
             input.setValue('')
             qrDialog.close()
             analyticsDialog.close()
+            dashboardDialog.close()
+            show(manageButton, false)
         }
     })
 }
